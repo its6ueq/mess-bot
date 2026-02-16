@@ -1,0 +1,27 @@
+{
+  "TestUser": {
+    "name": "TestUser",
+    "xu": 2238,
+    "bank": 0,
+    "level": 1,
+    "exp": 20,
+    "totalEarned": 1488,
+    "totalSpent": 250,
+    "fishCaught": 1,
+    "gamesPlayed": 4,
+    "gamesWon": 2,
+    "inventory": [
+      {
+        "name": "🐟 Ca Ro",
+        "price": 20,
+        "rarity": "common"
+      }
+    ],
+    "lastDaily": "2026-02-16T06:30:51.266Z",
+    "lastFish": "2026-02-16T06:30:51.268Z",
+    "lastWork": "2026-02-16T06:30:51.267Z",
+    "createdAt": "2026-02-16T06:30:51.237Z",
+    "checkinStreak": 1,
+    "lastCheckin": "2026-02-16T06:30:51.267Z"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "messenger-bot",
+  "version": "1.0.0",
+  "description": "Facebook Messenger auto-reply bot via Brave + Puppeteer",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "crawl": "node src/crawler.js"
+  },
+  "dependencies": {
+    "puppeteer-core": "^22.0.0",
+    "dotenv": "^16.4.0"
+  }
+}
