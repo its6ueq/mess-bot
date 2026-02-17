@@ -3,11 +3,13 @@ const config = require('../config');
 class Messenger {
   constructor(page) {
     this.page = page;
-    this.lastProcessed = new Map();
     this.currentThread = null;
-    this.threadNames = new Map(); // cache: threadId -> ten nguoi/nhom
+    this.threadNames = new Map();
+    
+    // THÊM: Map lưu danh sách các tin nhắn đã xử lý cho từng thread
+    // Key: threadId, Value: Set(hashTinNhan)
+    this.processedHashes = new Map(); 
   }
-
   async waitForLogin() {
     console.log('[Messenger] Dang vao messenger.com...');
     await this.page.goto('https://www.messenger.com', {
@@ -124,11 +126,59 @@ class Messenger {
       console.log(`[Messenger] Loi khi mo thread ${threadId}:`, err.message);
     }
   }
+  async getNewMessages(threadId) {
+    // 1. Lấy 20 tin nhắn mới nhất từ DOM (Hàm này giữ nguyên logic lấy tin của bạn)
+    const currentMessages = await this.getLatestMessages(20);
+    
+    // 2. Nếu đây là lần đầu tiên bot vào thread này (chưa có checkpoint)
+    if (!this.processedHashes.has(threadId)) {
+      console.log(`[Checkpoint] Khoi tao trang thai cho thread ${threadId}`);
+      this.processedHashes.set(threadId, new Set());
+      
+      // QUAN TRỌNG: Đánh dấu TẤT CẢ tin hiện tại là "Đã xử lý"
+      // Để tránh bot reply lại tin nhắn cũ từ hôm qua
+      const processed = this.processedHashes.get(threadId);
+      currentMessages.forEach(msg => {
+        processed.add(this.generateMsgHash(msg));
+      });
+      
+      return []; // Lần đầu không trả về tin nhắn nào
+    }
 
-  // Doc tin nhan - tra ve [{ text, sender, isMe }]
+    // 3. Lọc tin nhắn mới
+    const processed = this.processedHashes.get(threadId);
+    const newMessages = [];
+
+    // Duyệt danh sách tin lấy về
+    for (const msg of currentMessages) {
+      // Bỏ qua tin của chính mình (Bot)
+      if (msg.isMe) continue;
+
+      // Tạo hash (vân tay) cho tin nhắn
+      const hash = this.generateMsgHash(msg);
+
+      // Nếu hash này CHƯA có trong Set -> Đây là tin mới
+      if (!processed.has(hash)) {
+        newMessages.push(msg);
+        
+        // Lưu ý: Ta chưa add vào Set ngay ở đây. 
+        // Việc add vào Set (markAsProcessed) sẽ do bot.js gọi sau khi xử lý xong
+        // để đảm bảo nếu bot crash lúc xử lý thì lần sau vẫn nhận lại tin này.
+      }
+    }
+
+    return newMessages;
+  }
+
+  updateThreadState(threadId, messages) {
+    // Chỉ lưu tối đa 20 tin để tiết kiệm bộ nhớ
+    const snapshot = messages.slice(-20);
+    this.threadState.set(threadId, snapshot);
+  }
+
+  // Doc tin nhan - tra ve [{ text, sender, senderId, isMe }]
   async getLatestMessages(count = 20) {
     try {
-      // Lay ten thread de dung lam fallback sender
       const threadId = this.currentThread;
       let fallbackName = this.threadNames.get(threadId) || null;
       if (!fallbackName) {
@@ -138,14 +188,16 @@ class Messenger {
         }
       }
 
-      return await this.page.evaluate((cnt, myName, threadName) => {
+      const myId = config.myId;
+      return await this.page.evaluate((cnt, myName, threadName, _myId, _threadId) => {
         const messages = [];
         const rowElements = document.querySelectorAll('[role="row"]');
 
         const start = Math.max(0, rowElements.length - cnt);
         const recentRows = Array.from(rowElements).slice(start);
 
-        let lastSender = ''; // Luu ten sender truoc do (FB khong hien avatar cho tin lien tiep)
+        let lastSender = '';
+        let lastSenderId = '';
 
         for (const row of recentRows) {
           const divDirAuto = row.querySelector('div[dir="auto"]');
@@ -154,53 +206,58 @@ class Messenger {
           const text = divDirAuto.textContent.trim();
           if (!text) continue;
 
-          // isMe: tin nhan ben phai man hinh
           const rect = divDirAuto.getBoundingClientRect();
           const isMe = rect.left > (window.innerWidth / 2);
 
           let sender = isMe ? (myName || 'Me') : '';
+          let senderId = isMe ? (_myId || '') : '';
 
           if (!isMe) {
-            // Tim avatar img trong row - ten nam trong attr "alt"
-            // Avatar: 28x28, reaction emoji: 16x16 -> loc theo size
             const imgs = row.querySelectorAll('img');
             for (const img of imgs) {
-              // Avatar la hinh tron 28x28, bo qua emoji sticker va reaction
               const w = img.width, h = img.height;
               if (w >= 24 && w <= 40 && h >= 24 && h <= 40) {
                 const alt = img.getAttribute('alt') || '';
                 const src = img.src || '';
-                // Avatar co src tu fbcdn profiles, ko phai emoji.php
                 if (alt && alt.length > 1 && alt.length < 50
                     && !alt.includes('Seen')
                     && !alt.includes('Icon')
                     && !src.includes('emoji.php')) {
                   sender = alt;
+                  // Extract user ID from avatar parent link
+                  const parentLink = img.closest('a');
+                  if (parentLink) {
+                    const href = parentLink.getAttribute('href') || '';
+                    const idMatch = href.match(/\/(?:user|t)\/(\d+)/) ||
+                                    href.match(/profile\.php\?id=(\d+)/) ||
+                                    href.match(/\/(\d{6,})/);
+                    if (idMatch) senderId = idMatch[1];
+                  }
                   break;
                 }
               }
             }
-            // FB khong hien avatar cho tin lien tiep -> dung ten truoc do
             if (!sender && lastSender) {
               sender = lastSender;
+              senderId = lastSenderId;
             }
-            // Fallback cuoi: ten thread (DM = ten nguoi kia)
-            if (!sender) {
-              sender = threadName || 'User';
-            }
+            if (!sender) sender = threadName || 'User';
+            // DM fallback: senderId = threadId
+            if (!senderId && _threadId) senderId = _threadId;
           }
 
-          // Cap nhat lastSender
           if (!isMe && sender) {
             lastSender = sender;
+            lastSenderId = senderId;
           } else if (isMe) {
-            lastSender = ''; // Reset khi gap tin cua minh
+            lastSender = '';
+            lastSenderId = '';
           }
 
-          messages.push({ text, sender, isMe });
+          messages.push({ text, sender, senderId, isMe });
         }
         return messages;
-      }, count, config.myName, fallbackName);
+      }, count, config.myName, fallbackName, myId, threadId);
     } catch (err) {
       console.log('[Messenger] Loi doc tin:', err.message);
       return [];
@@ -336,8 +393,33 @@ class Messenger {
   }
 
   sleep(ms) {
-    return new Promise(r => setTimeout(r, ms + Math.random() * 500));
+    return new Promise(r => setTimeout(r, ms + Math.random() * 50));
   }
+  generateMsgHash(msg) {
+    // Kết hợp ID người gửi + Nội dung để tránh trùng lặp
+    // Nếu có senderId (từ React Fiber) thì dùng, không thì dùng tên
+    const id = msg.senderId || msg.sender; 
+    return `${id}_${msg.text}`.trim();
+  }
+
+  // Đánh dấu 1 tin nhắn là "Đã xử lý" (Gọi hàm này sau khi bot reply xong)
+  markAsProcessed(threadId, msg) {
+    if (!this.processedHashes.has(threadId)) {
+      this.processedHashes.set(threadId, new Set());
+    }
+    
+    const processed = this.processedHashes.get(threadId);
+    const hash = this.generateMsgHash(msg);
+    processed.add(hash);
+
+    // Dọn dẹp bộ nhớ: Chỉ giữ lại 50 tin gần nhất để tránh tràn RAM
+    if (processed.size > 50) {
+      // Xóa phần tử cũ nhất (Set trong JS giữ thứ tự chèn)
+      const firstValue = processed.values().next().value;
+      processed.delete(firstValue);
+    }
+  }
+
 }
 
 module.exports = { Messenger };

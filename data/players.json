@@ -1,27 +1,425 @@
 {
-  "TestUser": {
-    "name": "TestUser",
-    "xu": 2238,
+  "100010201036867": {
+    "id": "100010201036867",
+    "displayName": "Nguyen Duc Truong Giang",
+    "xu": 6000,
+    "bank": 0,
+    "level": 2,
+    "exp": 400,
+    "totalEarned": 5000,
+    "totalSpent": 0,
+    "fishCaught": 0,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [],
+    "lastDaily": null,
+    "lastFish": null,
+    "lastWork": null,
+    "createdAt": "2026-02-17T15:37:51.960Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "100054767970643": {
+    "id": "100054767970643",
+    "displayName": "Nguyễn Duy",
+    "xu": 3377,
+    "bank": 0,
+    "level": 2,
+    "exp": 150,
+    "totalEarned": 2500,
+    "totalSpent": 0,
+    "fishCaught": 1,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [
+      {
+        "name": "🐠 Ca Vang",
+        "price": 30,
+        "rarity": "common"
+      }
+    ],
+    "lastDaily": null,
+    "lastFish": "2026-02-17T16:13:00.348Z",
+    "lastWork": null,
+    "createdAt": "2026-02-17T15:38:15.115Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "100092277185369": {
+    "id": "100092277185369",
+    "displayName": "Bằng Hải",
+    "xu": 2123,
+    "bank": 0,
+    "level": 2,
+    "exp": 0,
+    "totalEarned": 1000,
+    "totalSpent": 0,
+    "fishCaught": 2,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [
+      {
+        "name": "🦐 Tom",
+        "price": 40,
+        "rarity": "common"
+      },
+      {
+        "name": "🐢 Rua",
+        "price": 300,
+        "rarity": "rare"
+      }
+    ],
+    "lastDaily": null,
+    "lastFish": "2026-02-17T15:41:22.901Z",
+    "lastWork": null,
+    "createdAt": "2026-02-17T15:40:14.406Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "100080723012303": {
+    "id": "100080723012303",
+    "displayName": "L. T. Việt",
+    "xu": 1000,
     "bank": 0,
     "level": 1,
-    "exp": 20,
-    "totalEarned": 1488,
-    "totalSpent": 250,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
+    "fishCaught": 0,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [],
+    "lastDaily": null,
+    "lastFish": null,
+    "lastWork": null,
+    "createdAt": "2026-02-17T15:42:21.122Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "100094031156752": {
+    "id": "100094031156752",
+    "displayName": "NH Bảo",
+    "xu": 1000,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
+    "fishCaught": 0,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [],
+    "lastDaily": null,
+    "lastFish": null,
+    "lastWork": null,
+    "createdAt": "2026-02-17T15:43:13.060Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "100027542017332": {
+    "id": "100027542017332",
+    "displayName": "Trí Việt",
+    "xu": 1000,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
+    "fishCaught": 0,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [],
+    "lastDaily": null,
+    "lastFish": null,
+    "lastWork": null,
+    "createdAt": "2026-02-17T15:44:37.376Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "100093502091295": {
+    "id": "100093502091295",
+    "displayName": "Phạm Đức",
+    "xu": 1000,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
+    "fishCaught": 0,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [],
+    "lastDaily": null,
+    "lastFish": null,
+    "lastWork": null,
+    "createdAt": "2026-02-17T16:00:45.250Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "1151753583565055": {
+    "id": "1151753583565055",
+    "displayName": "Friend",
+    "xu": 1000,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
     "fishCaught": 1,
-    "gamesPlayed": 4,
-    "gamesWon": 2,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
     "inventory": [
+      {
+        "name": "🦐 Tom",
+        "price": 40,
+        "rarity": "common"
+      }
+    ],
+    "lastDaily": null,
+    "lastFish": "2026-02-17T16:08:00.600Z",
+    "lastWork": null,
+    "createdAt": "2026-02-17T16:07:27.994Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "Unknown": {
+    "id": "Unknown",
+    "displayName": "Unknown",
+    "xu": 1000,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
+    "fishCaught": 1,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [
+      {
+        "name": "🦀 Cua",
+        "price": 80,
+        "rarity": "uncommon"
+      }
+    ],
+    "lastDaily": null,
+    "lastFish": "2026-02-17T16:08:07.014Z",
+    "lastWork": null,
+    "createdAt": "2026-02-17T16:08:07.014Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "23295,3504810323": {
+    "id": [
+      23295,
+      3504810323
+    ],
+    "displayName": [
+      23295,
+      3504810323
+    ],
+    "xu": 1086,
+    "bank": 0,
+    "level": 1,
+    "exp": 8,
+    "totalEarned": 86,
+    "totalSpent": 0,
+    "fishCaught": 19,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [
+      {
+        "name": "🐢 Rua",
+        "price": 300,
+        "rarity": "rare"
+      },
+      {
+        "name": "🐢 Rua",
+        "price": 300,
+        "rarity": "rare"
+      },
       {
         "name": "🐟 Ca Ro",
         "price": 20,
         "rarity": "common"
+      },
+      {
+        "name": "👢 Giay Cu",
+        "price": 1,
+        "rarity": "trash"
+      },
+      {
+        "name": "🦐 Tom",
+        "price": 40,
+        "rarity": "common"
+      },
+      {
+        "name": "🐟 Ca Ro",
+        "price": 20,
+        "rarity": "common"
+      },
+      {
+        "name": "🪣 Xo Rong",
+        "price": 2,
+        "rarity": "trash"
+      },
+      {
+        "name": "🪣 Xo Rong",
+        "price": 2,
+        "rarity": "trash"
+      },
+      {
+        "name": "👢 Giay Cu",
+        "price": 1,
+        "rarity": "trash"
+      },
+      {
+        "name": "🐟 Ca Ro",
+        "price": 20,
+        "rarity": "common"
+      },
+      {
+        "name": "🐙 Bach Tuoc",
+        "price": 150,
+        "rarity": "rare"
+      },
+      {
+        "name": "🐡 Ca Noc",
+        "price": 50,
+        "rarity": "uncommon"
+      },
+      {
+        "name": "🦐 Tom",
+        "price": 40,
+        "rarity": "common"
+      },
+      {
+        "name": "🐡 Ca Noc",
+        "price": 50,
+        "rarity": "uncommon"
+      },
+      {
+        "name": "🐌 Ốc Bươu",
+        "price": 5,
+        "size": 1
+      },
+      {
+        "name": "👢 Giày Cũ",
+        "price": 2,
+        "size": 1
+      },
+      {
+        "name": "👢 Giày Cũ",
+        "price": 2,
+        "size": 1
+      },
+      {
+        "name": "🥫 Lon Bia",
+        "price": 3,
+        "size": 1
+      },
+      {
+        "name": "🐟 Cá Diếc",
+        "price": 24,
+        "size": 2
       }
     ],
-    "lastDaily": "2026-02-16T06:30:51.266Z",
-    "lastFish": "2026-02-16T06:30:51.268Z",
-    "lastWork": "2026-02-16T06:30:51.267Z",
-    "createdAt": "2026-02-16T06:30:51.237Z",
-    "checkinStreak": 1,
-    "lastCheckin": "2026-02-16T06:30:51.267Z"
+    "lastDaily": null,
+    "lastFish": "2026-02-17T20:46:32.102Z",
+    "lastWork": null,
+    "createdAt": "2026-02-17T18:33:42.200Z",
+    "checkinStreak": 0,
+    "lastCheckin": null,
+    "bait": {
+      "name": "🪱 Giun",
+      "size": 1
+    },
+    "rod": "tre",
+    "maxBaitSize": 2,
+    "album": {
+      "🐌 Ốc Bươu": {
+        "count": 1,
+        "size": 1
+      },
+      "👢 Giày Cũ": {
+        "count": 2,
+        "size": 1
+      },
+      "🥫 Lon Bia": {
+        "count": 1,
+        "size": 1
+      },
+      "🐟 Cá Diếc": {
+        "count": 1,
+        "size": 2
+      }
+    },
+    "albumRewards": []
+  },
+  "23304,2359319385": {
+    "id": [
+      23304,
+      2359319385
+    ],
+    "displayName": [
+      23304,
+      2359319385
+    ],
+    "xu": 1000,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 0,
+    "fishCaught": 2,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "inventory": [
+      {
+        "name": "🦈 Ca Map",
+        "price": 200,
+        "rarity": "rare"
+      },
+      {
+        "name": "🦐 Tom",
+        "price": 40,
+        "rarity": "common"
+      }
+    ],
+    "lastDaily": null,
+    "lastFish": "2026-02-17T19:03:13.253Z",
+    "lastWork": null,
+    "createdAt": "2026-02-17T19:02:57.901Z",
+    "checkinStreak": 0,
+    "lastCheckin": null
+  },
+  "23285,1887549507": {
+    "id": [
+      23285,
+      1887549507
+    ],
+    "displayName": [
+      23285,
+      1887549507
+    ],
+    "xu": 500,
+    "bank": 0,
+    "level": 3,
+    "exp": 100,
+    "totalEarned": 4000,
+    "totalSpent": 4500,
+    "fishCaught": 0,
+    "gamesPlayed": 5,
+    "gamesWon": 2,
+    "inventory": [],
+    "lastDaily": null,
+    "lastFish": null,
+    "lastWork": null,
+    "createdAt": "2026-02-17T20:47:08.956Z",
+    "checkinStreak": 0,
+    "lastCheckin": null,
+    "rod": "tre",
+    "boat": null,
+    "album": {},
+    "albumRewards": []
   }
 }

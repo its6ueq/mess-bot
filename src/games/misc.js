@@ -10,33 +10,6 @@ function eightBall(question) {
   return `🎱 "${question}"\n${ans[Math.floor(Math.random() * ans.length)]}`;
 }
 
-function trivia() {
-  const qs = [
-    { q: 'Thu do Nhat Ban?', a: 'Tokyo' },
-    { q: 'Nuoc lon nhat?', a: 'Nga' },
-    { q: 'Ai sang lap Facebook?', a: 'Mark Zuckerberg' },
-    { q: 'Nui cao nhat?', a: 'Everest' },
-    { q: 'VN co bao nhieu tinh?', a: '63' },
-    { q: 'HTML la gi?', a: 'HyperText Markup Language' },
-    { q: '1 byte = ? bit', a: '8' },
-    { q: 'Ai ve Mona Lisa?', a: 'Da Vinci' },
-    { q: 'Song dai nhat?', a: 'Nile' },
-    { q: 'Pizza tu nuoc nao?', a: 'Italy' },
-    { q: 'iPhone cua cong ty nao?', a: 'Apple' },
-    { q: 'Big Apple la thanh pho nao?', a: 'New York' },
-    { q: 'Game CS cua Valve thua hang?', a: 'Counter-Strike' },
-    { q: 'Mau hiem nhat?', a: 'AB-' },
-    { q: 'Con vat nhanh nhat tren can?', a: 'Cheetah' },
-    { q: 'Hanh tinh gan Mat Troi nhat?', a: 'Mercury' },
-    { q: 'Dai duong lon nhat?', a: 'Thai Binh Duong' },
-    { q: 'Ai viet Romeo & Juliet?', a: 'Shakespeare' },
-    { q: 'CO2 la khi gi?', a: 'Carbon dioxide' },
-    { q: 'DNA viet tat cua?', a: 'Deoxyribonucleic acid' },
-  ];
-  const item = qs[Math.floor(Math.random() * qs.length)];
-  return `❓ DO VUI:\n${item.q}\n\n💡 ${item.a}`;
-}
-
 function lucky() {
   const n = Math.floor(Math.random() * 100) + 1;
   let msg = `🍀 So may man: ${n}\n`;
@@ -164,6 +137,6 @@ function checkin(economy, player) {
 }
 
 module.exports = {
-  eightBall, trivia, lucky, rollD20, flip, dice,
+  eightBall, lucky, rollD20, flip, dice,
   truthOrDare, emojiQuiz, cardBattle, checkin,
 };

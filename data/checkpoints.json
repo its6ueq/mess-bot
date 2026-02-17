@@ -1,22 +1,38 @@
 {
-  "9897855843579255": {
-    "text": "Ok",
-    "sender": "Lê Thu Dương",
-    "time": 1771257317274
-  },
-  "9921880717934426": {
-    "text": "Chào Duy nha  mình là Hải Bằng, chatbot đáng yêu của bạn  ;))  \nMình đẹp trai, vui tính, thông minh và luôn sẵn sàng để trò chuyện cùng bạn   \nCòn bạn thì sao? Bạn là ai vậy?",
-    "sender": "Me",
-    "time": 1771256882214
+  "1290686982996844": {
+    "text": ".",
+    "sender": "User",
+    "senderId": [
+      14335,
+      65566975
+    ],
+    "time": 1771355208796
   },
   "4476760002339588": {
-    "text": "có mỗi lấy mấy tin nhắn gần nhất thôi cần gì băm",
-    "sender": "Nguyen Duc Truong Giang",
-    "time": 1771259019848
-  },
-  "29045529741760584": {
-    "text": "chua het nam tam tai",
+    "text": "em moi test duoc chung do",
     "sender": "User",
-    "time": 1771257781167
+    "senderId": [
+      23295,
+      3504810323
+    ],
+    "time": 1771361339024
+  },
+  "1191021623016238": {
+    "text": "🎣 Thả câu... (Mồi: 🪱 Giun size 1)\n\n🐟 Cá Diếc | Size 2 | 24 xu\nMồi còn: 🪱 Giun (size 1)\n🆕 Mở khoá mồi size 2 trong shop!\n\n💡 /moi Cá Diếc để dùng cá này làm mồi lớn hơn!",
+    "sender": "User",
+    "senderId": [
+      14335,
+      65566975
+    ],
+    "time": 1771361161783
+  },
+  "1151753583565055": {
+    "text": "⏰ Doi 3s nua moi cau tiep duoc!",
+    "sender": "User",
+    "senderId": [
+      14335,
+      65566975
+    ],
+    "time": 1771355232635
   }
 }

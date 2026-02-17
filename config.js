@@ -8,24 +8,41 @@ module.exports = {
 
   // Bot identity
   botName: process.env.BOT_NAME || 'Bot',
-  myName: process.env.MY_NAME || '',
+  myName: process.env.MY_NAME || 'Nguyễn Duy',
+  myId: process.env.MY_ID || '61568421755135',
 
-  // Admins (merge tu .env va file)
+  // Admins - dung Facebook User ID (so)
+  // Admins - dung Facebook User ID (so)
   get admins() {
+    // 1. Lay tu .env
     const envAdmins = (process.env.ADMINS || '').split(',').map(s => s.trim()).filter(Boolean);
-    const fileAdmins = db.load('admins', []);
-    return [...new Set([...envAdmins, ...fileAdmins])];
+
+    // 2. Lay tu database (khi dung lenh /addadmin)
+    let fileAdmins = db.load('admins', []);
+    
+    // --- FIX LOI O DAY: Kiem tra xem co phai Array khong ---
+    if (!Array.isArray(fileAdmins)) {
+        // Neu DB tra ve object hoac null, coi nhu danh sach rong
+        fileAdmins = []; 
+    }
+
+    // 3. Hardcode ID cua ban (de tranh mat admin)
+    const myAdmin = ['100054767970643']; // ID cua ban
+
+    // Gop tat ca lai va loc trung
+    return [...new Set([...envAdmins, ...fileAdmins, ...myAdmin])];
   },
-  addAdmin(name) {
+
+  addAdmin(id) {
     const list = db.load('admins', []);
-    if (!list.includes(name)) {
-      list.push(name);
+    if (!list.includes(id)) {
+      list.push(id);
       db.setAll('admins', list);
     }
   },
-  removeAdmin(name) {
+  removeAdmin(id) {
     let list = db.load('admins', []);
-    list = list.filter(n => n !== name);
+    list = list.filter(n => n !== id);
     db.setAll('admins', list);
   },
 

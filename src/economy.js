@@ -1,27 +1,66 @@
 // He thong kinh te - tai khoan ngan hang, xu, inventory
+// KEY = Facebook User ID (so), hien thi = displayName
 const db = require('./db');
 
 const COLLECTION = 'players';
+const USERS_COLLECTION = 'users'; // Registry: id -> { name, lastSeen }
 
 class Economy {
   constructor() {
     // Load tu db module (co cache, chi doc file 1 lan)
     this.players = db.load(COLLECTION, {});
+    this.users = db.load(USERS_COLLECTION, {}); // User registry
   }
 
   _save() {
     db.save(COLLECTION);
   }
 
-  // Lay hoac tao player moi
-  getPlayer(name) {
-    if (!name || name === 'Other' || name === 'Unknown') {
-      // Tranh tao player voi ten xau
-      name = name || 'Unknown';
+  _saveUsers() {
+    db.save(USERS_COLLECTION);
+  }
+
+  // Update user registry: map ID -> display name
+  updateUser(id, displayName) {
+    if (!id || !displayName) return;
+    this.users[id] = {
+      name: displayName,
+      lastSeen: new Date().toISOString(),
+    };
+    this._saveUsers();
+  }
+
+  // Lay display name tu ID (tra ve ID neu chua biet ten)
+  getDisplayName(id) {
+    if (this.players[id]?.displayName) return this.players[id].displayName;
+    if (this.users[id]?.name) return this.users[id].name;
+    return id;
+  }
+
+  // Tim ID tu display name (cho transfer khi user nhap ten)
+  findIdByName(name) {
+    if (!name) return null;
+    const lower = name.toLowerCase();
+    // Tim trong players truoc
+    for (const [id, p] of Object.entries(this.players)) {
+      if (p.displayName && p.displayName.toLowerCase() === lower) return id;
     }
-    if (!this.players[name]) {
-      this.players[name] = {
-        name,
+    // Tim trong user registry
+    for (const [id, u] of Object.entries(this.users)) {
+      if (u.name && u.name.toLowerCase() === lower) return id;
+    }
+    return null;
+  }
+
+  // Lay hoac tao player moi (key = ID)
+  getPlayer(id, displayName) {
+    if (!id || id === 'Other' || id === 'Unknown') {
+      id = id || 'Unknown';
+    }
+    if (!this.players[id]) {
+      this.players[id] = {
+        id,
+        displayName: displayName || id,
         xu: 1000,            // Bat dau voi 1000 xu
         bank: 0,
         level: 1,
@@ -38,20 +77,29 @@ class Economy {
         createdAt: new Date().toISOString(),
         checkinStreak: 0,
         lastCheckin: null,
+        // Fishing system
+        rod: 'tre',
+        boat: null,
+        album: {},
+        albumRewards: [],
       };
       this._save();
+    } else if (displayName && this.players[id].displayName !== displayName) {
+      // Cap nhat display name neu doi
+      this.players[id].displayName = displayName;
+      this._save();
     }
-    return this.players[name];
+    return this.players[id];
   }
 
   // === XU ===
-  getBalance(name) {
-    const p = this.getPlayer(name);
+  getBalance(id) {
+    const p = this.getPlayer(id);
     return { xu: p.xu, bank: p.bank, total: p.xu + p.bank };
   }
 
-  addXu(name, amount) {
-    const p = this.getPlayer(name);
+  addXu(id, amount) {
+    const p = this.getPlayer(id);
     p.xu += amount;
     if (amount > 0) p.totalEarned += amount;
     this._addExp(p, Math.floor(Math.abs(amount) / 10));
@@ -59,8 +107,8 @@ class Economy {
     return p.xu;
   }
 
-  removeXu(name, amount) {
-    const p = this.getPlayer(name);
+  removeXu(id, amount) {
+    const p = this.getPlayer(id);
     if (p.xu < amount) return false;
     p.xu -= amount;
     p.totalSpent += amount;
@@ -68,8 +116,8 @@ class Economy {
     return true;
   }
 
-  deposit(name, amount) {
-    const p = this.getPlayer(name);
+  deposit(id, amount) {
+    const p = this.getPlayer(id);
     if (amount === 'all') amount = p.xu;
     amount = parseInt(amount);
     if (isNaN(amount) || amount <= 0) return 'So xu khong hop le!';
@@ -80,8 +128,8 @@ class Economy {
     return `Da gui ${amount} xu vao ngan hang.\nVi: ${p.xu} xu | Bank: ${p.bank} xu`;
   }
 
-  withdraw(name, amount) {
-    const p = this.getPlayer(name);
+  withdraw(id, amount) {
+    const p = this.getPlayer(id);
     if (amount === 'all') amount = p.bank;
     amount = parseInt(amount);
     if (isNaN(amount) || amount <= 0) return 'So xu khong hop le!';
@@ -93,8 +141,8 @@ class Economy {
   }
 
   // === DAILY ===
-  daily(name) {
-    const p = this.getPlayer(name);
+  daily(id) {
+    const p = this.getPlayer(id);
     const now = new Date();
     if (p.lastDaily) {
       const last = new Date(p.lastDaily);
@@ -111,8 +159,8 @@ class Economy {
   }
 
   // === WORK ===
-  work(name) {
-    const p = this.getPlayer(name);
+  work(id) {
+    const p = this.getPlayer(id);
     const now = Date.now();
     if (p.lastWork && now - new Date(p.lastWork).getTime() < 60000) {
       const remaining = Math.ceil((60000 - (now - new Date(p.lastWork).getTime())) / 1000);
@@ -140,10 +188,10 @@ class Economy {
   }
 
   // === PROFILE ===
-  profile(name) {
-    const p = this.getPlayer(name);
+  profile(id) {
+    const p = this.getPlayer(id);
     const winRate = p.gamesPlayed > 0 ? ((p.gamesWon / p.gamesPlayed) * 100).toFixed(1) : 0;
-    let msg = `${p.name}\n`;
+    let msg = `${p.displayName}\n`;
     msg += `Level ${p.level} (${p.exp} EXP)\n`;
     msg += `Vi: ${p.xu} xu\n`;
     msg += `Bank: ${p.bank} xu\n`;
@@ -156,7 +204,7 @@ class Economy {
   // === TOP / LEADERBOARD ===
   top() {
     const entries = Object.values(this.players)
-      .map(p => ({ name: p.name, total: p.xu + p.bank, level: p.level }))
+      .map(p => ({ name: p.displayName || p.id, total: p.xu + p.bank, level: p.level }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 10);
 
@@ -171,16 +219,17 @@ class Economy {
   }
 
   // === CHUYEN XU ===
-  transfer(from, to, amount) {
+  transfer(fromId, toId, amount) {
     amount = parseInt(amount);
     if (isNaN(amount) || amount <= 0) return 'So xu khong hop le!';
-    const pFrom = this.getPlayer(from);
+    if (fromId === toId) return 'Khong the chuyen xu cho chinh minh!';
+    const pFrom = this.getPlayer(fromId);
     if (pFrom.xu < amount) return `Ban chi co ${pFrom.xu} xu!`;
-    const pTo = this.getPlayer(to);
+    const pTo = this.getPlayer(toId);
     pFrom.xu -= amount;
     pTo.xu += amount;
     this._save();
-    return `Da chuyen ${amount} xu cho ${to}.\nVi con: ${pFrom.xu} xu`;
+    return `Da chuyen ${amount} xu cho ${pTo.displayName}.\nVi con: ${pFrom.xu} xu`;
   }
 
   // === LEVEL SYSTEM ===
@@ -194,8 +243,8 @@ class Economy {
   }
 
   // Record game result
-  recordGame(name, won) {
-    const p = this.getPlayer(name);
+  recordGame(id, won) {
+    const p = this.getPlayer(id);
     p.gamesPlayed++;
     if (won) p.gamesWon++;
     this._save();
