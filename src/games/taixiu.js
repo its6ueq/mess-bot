@@ -1,4 +1,4 @@
-// Tai Xiu - co cuoc xu
+// Tài Xỉu - có cược xu
 
 function play(ctx, args) {
   const { player, economy } = ctx;
@@ -8,10 +8,10 @@ function play(ctx, args) {
 
   const aliases = { 'tai': 'tai', 'tài': 'tai', 't': 'tai', 'xiu': 'xiu', 'xỉu': 'xiu', 'x': 'xiu' };
   const pick = aliases[choice?.toLowerCase()];
-  if (!pick) return 'Cu phap: /taixiu <tai|xiu> [so xu]\nVD: /taixiu tai 500';
+  if (!pick) return 'Cú pháp: /taixiu <tài|xỉu> [số xu]\nVD: /taixiu tài 500';
 
   const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Ban chi co ${bal.xu} xu! Can ${bet} xu.`;
+  if (bal.xu < bet) return `Bạn chỉ có ${bal.xu} xu! Cần ${bet} xu.`;
 
   economy.removeXu(player, bet);
 
@@ -21,15 +21,16 @@ function play(ctx, args) {
   const total = d1 + d2 + d3;
   const result = total >= 11 ? 'tai' : 'xiu';
   const dice = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+  const label = { tai: 'TÀI', xiu: 'XỈU' };
 
-  let msg = `🎲 TAI XIU! Cuoc: ${bet} xu (${pick.toUpperCase()})\n`;
-  msg += `${dice[d1 - 1]} ${dice[d2 - 1]} ${dice[d3 - 1]} = ${total} → ${result.toUpperCase()}\n\n`;
+  let msg = `🎲 TÀI XỈU! Cược: ${bet} xu (${label[pick]})\n`;
+  msg += `${dice[d1 - 1]} ${dice[d2 - 1]} ${dice[d3 - 1]} = ${total} → ${label[result]}\n\n`;
 
   if (pick === result) {
     const win = bet * 2;
     economy.addXu(player, win);
     economy.recordGame(player, true);
-    msg += `🎉 THANG! +${win} xu`;
+    msg += `🎉 THẮNG! +${win} xu`;
   } else {
     economy.recordGame(player, false);
     msg += `💀 THUA! -${bet} xu`;

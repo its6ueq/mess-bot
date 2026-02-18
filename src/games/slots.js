@@ -1,16 +1,16 @@
-// Slot machine - co cuoc xu
+// Máy quay - có cược xu
 
 function play(ctx, betStr) {
   const { player, economy } = ctx;
   const bet = parseInt(betStr) || 100;
 
   const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Ban chi co ${bal.xu} xu!`;
+  if (bal.xu < bet) return `Bạn chỉ có ${bal.xu} xu!`;
 
   economy.removeXu(player, bet);
 
   const symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '🔔', '⭐'];
-  const weights = [20, 18, 16, 14, 5, 3, 12, 12]; // 7 va kim cuong hiem
+  const weights = [20, 18, 16, 14, 5, 3, 12, 12];
   const total = weights.reduce((a, b) => a + b, 0);
 
   function spin() {
@@ -23,7 +23,7 @@ function play(ctx, betStr) {
   }
 
   const r1 = spin(), r2 = spin(), r3 = spin();
-  let msg = `🎰 SLOTS! Cuoc: ${bet} xu\n| ${r1.symbol} | ${r2.symbol} | ${r3.symbol} |\n\n`;
+  let msg = `🎰 SLOTS! Cược: ${bet} xu\n| ${r1.symbol} | ${r2.symbol} | ${r3.symbol} |\n\n`;
 
   const allSame = r1.index === r2.index && r2.index === r3.index;
   const hasPair = r1.index === r2.index || r2.index === r3.index || r1.index === r3.index;
@@ -45,7 +45,7 @@ function play(ctx, betStr) {
     const win = Math.floor(bet * 1.5);
     economy.addXu(player, win);
     economy.recordGame(player, true);
-    msg += `🎉 Trung doi! +${win} xu`;
+    msg += `🎉 Trúng đôi! +${win} xu`;
   } else {
     economy.recordGame(player, false);
     msg += `💨 Thua! -${bet} xu`;

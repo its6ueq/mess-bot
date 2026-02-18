@@ -1,4 +1,4 @@
-// Oan tu ti - co cuoc xu
+// Oẳn tù tì - có cược xu
 
 function play(ctx, args) {
   const { player, economy } = ctx;
@@ -13,11 +13,11 @@ function play(ctx, args) {
   };
 
   const pick = aliases[choice?.toLowerCase()];
-  if (!pick) return 'Cu phap: /rps <keo|bua|bao> [xu cuoc]\nVD: /rps keo 200';
+  if (!pick) return 'Cú pháp: /rps <kéo|búa|bao> [xu cược]\nVD: /rps kéo 200';
 
   if (bet > 0) {
     const bal = economy.getBalance(player);
-    if (bal.xu < bet) return `Ban chi co ${bal.xu} xu!`;
+    if (bal.xu < bet) return `Bạn chỉ có ${bal.xu} xu!`;
     economy.removeXu(player, bet);
   }
 
@@ -26,22 +26,22 @@ function play(ctx, args) {
   const emojis = { keo: '✌️', bua: '✊', bao: '✋' };
 
   let msg = `${emojis[botPick]} vs ${emojis[pick]}`;
-  if (bet > 0) msg += ` (cuoc: ${bet} xu)`;
+  if (bet > 0) msg += ` (cược: ${bet} xu)`;
   msg += '\n';
 
   if (pick === botPick) {
-    if (bet > 0) economy.addXu(player, bet); // Tra lai
-    msg += '🤝 HOA!';
+    if (bet > 0) economy.addXu(player, bet);
+    msg += '🤝 HÒA!';
   } else {
     const wins = { keo: 'bao', bua: 'keo', bao: 'bua' };
     if (wins[pick] === botPick) {
       const win = bet > 0 ? bet * 2 : 0;
       if (win > 0) economy.addXu(player, win);
       economy.recordGame(player, true);
-      msg += `🎉 BAN THANG!${win > 0 ? ` +${win} xu` : ''}`;
+      msg += `🎉 BẠN THẮNG!${win > 0 ? ` +${win} xu` : ''}`;
     } else {
       economy.recordGame(player, false);
-      msg += `😈 BOT THANG!${bet > 0 ? ` -${bet} xu` : ''}`;
+      msg += `😈 BOT THẮNG!${bet > 0 ? ` -${bet} xu` : ''}`;
     }
   }
 

@@ -1,23 +1,23 @@
-// Cac game nho khong can session: 8ball, trivia, lucky, d20, flip, truthdare, emoji quiz, diem danh
+// Các game nhỏ không cần session
 
 function eightBall(question) {
-  if (!question) return '🎱 Hoi 1 cau! VD: /8ball toi co giau khong?';
+  if (!question) return '🎱 Hỏi 1 câu! VD: /8ball tôi có giàu không?';
   const ans = [
-    '🟢 Chac chan!', '🟢 Tuyet doi!', '🟢 Co the lam!', '🟢 Tin toi!',
-    '🟡 Co le...', '🟡 Chua chac...', '🟡 Hoi lai sau!', '🟡 Kho noi...',
-    '🔴 Khong!', '🔴 Khong co kha nang!', '🔴 Dung mo!', '🔴 0%!',
+    '🟢 Chắc chắn!', '🟢 Tuyệt đối!', '🟢 Có thể làm được!', '🟢 Tin tôi đi!',
+    '🟡 Có lẽ...', '🟡 Chưa chắc...', '🟡 Hỏi lại sau!', '🟡 Khó nói...',
+    '🔴 Không!', '🔴 Không có khả năng!', '🔴 Đừng mơ!', '🔴 0%!',
   ];
   return `🎱 "${question}"\n${ans[Math.floor(Math.random() * ans.length)]}`;
 }
 
 function lucky() {
   const n = Math.floor(Math.random() * 100) + 1;
-  let msg = `🍀 So may man: ${n}\n`;
-  if (n >= 90) msg += '🌟 SIEU MAY MAN!';
-  else if (n >= 70) msg += '😊 May man!';
-  else if (n >= 50) msg += '😐 Binh thuong!';
-  else if (n >= 30) msg += '😅 Hoi xui!';
-  else msg += '💀 Om roi...';
+  let msg = `🍀 Số may mắn: ${n}\n`;
+  if (n >= 90) msg += '🌟 SIÊU MAY MẮN!';
+  else if (n >= 70) msg += '😊 May mắn!';
+  else if (n >= 50) msg += '😐 Bình thường!';
+  else if (n >= 30) msg += '😅 Hơi xui!';
+  else msg += '💀 Ôm rồi...';
   return msg;
 }
 
@@ -30,7 +30,7 @@ function rollD20() {
 }
 
 function flip() {
-  return Math.random() < 0.5 ? '🪙 SAP! (Heads)' : '🪙 NGUA! (Tails)';
+  return Math.random() < 0.5 ? '🪙 SẤP! (Heads)' : '🪙 NGỬA! (Tails)';
 }
 
 function dice(input) {
@@ -43,43 +43,43 @@ function dice(input) {
   for (let i = 0; i < count; i++) results.push(Math.floor(Math.random() * sides) + 1);
   const de = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
   let display = results.map(r => sides === 6 ? (de[r - 1] || r) : `[${r}]`).join(' ');
-  if (count > 1) display += `\nTong: ${results.reduce((a, b) => a + b, 0)}`;
+  if (count > 1) display += `\nTổng: ${results.reduce((a, b) => a + b, 0)}`;
   return `🎲 ${display}`;
 }
 
 function truthOrDare(choice) {
   const truths = [
-    'Crush hien tai la ai?', 'Dieu xau ho nhat ban tung lam?',
-    'Lan cuoi khoc la khi nao?', 'Bi mat chua ke cho ai?',
-    'Ban co hay stalking ai tren FB?', 'Crush dau tien la ai?',
-    'Dieu ban so nhat?', 'Ban da tung noi doi ban than?',
-    'Mon an ghet nhat?', 'Dieu hoi han nhat?',
+    'Crush hiện tại là ai?', 'Điều xấu hổ nhất bạn từng làm?',
+    'Lần cuối khóc là khi nào?', 'Bí mật chưa kể cho ai?',
+    'Bạn có hay stalking ai trên FB?', 'Crush đầu tiên là ai?',
+    'Điều bạn sợ nhất?', 'Bạn đã từng nói dối bạn thân?',
+    'Món ăn ghét nhất?', 'Điều hối hận nhất?',
   ];
   const dares = [
-    'Gui "Yeu ban" cho nguoi thu 3 trong danh ba!',
-    'Selfie bay gio gui vao day!', 'Hat 1 bai va gui voice!',
-    'Doi avatar thanh anh xau trong 1 gio!',
-    'Gui sticker cho 5 nguoi lien tuc!',
-    'Dang 1 status xau ho!', 'Gui "Em nho anh" cho nguoi cuoi cung nhan tin!',
+    'Gửi "Yêu bạn" cho người thứ 3 trong danh bạ!',
+    'Selfie bây giờ gửi vào đây!', 'Hát 1 bài và gửi voice!',
+    'Đổi avatar thành ảnh xấu trong 1 giờ!',
+    'Gửi sticker cho 5 người liên tục!',
+    'Đăng 1 status xấu hổ!', 'Gửi "Em nhớ anh" cho người cuối cùng nhắn tin!',
   ];
-  if (!choice) return 'Chon: truth (t) hoac dare (d)';
+  if (!choice) return 'Chọn: truth (t) hoặc dare (d)';
   const c = choice.toLowerCase();
-  if (c === 'truth' || c === 't') return `🤔 SU THAT:\n${truths[Math.floor(Math.random() * truths.length)]}`;
-  if (c === 'dare' || c === 'd') return `😈 THACH THUC:\n${dares[Math.floor(Math.random() * dares.length)]}`;
-  return 'Chon: truth (t) hoac dare (d)';
+  if (c === 'truth' || c === 't') return `🤔 SỰ THẬT:\n${truths[Math.floor(Math.random() * truths.length)]}`;
+  if (c === 'dare' || c === 'd') return `😈 THÁCH THỨC:\n${dares[Math.floor(Math.random() * dares.length)]}`;
+  return 'Chọn: truth (t) hoặc dare (d)';
 }
 
 function emojiQuiz() {
   const qs = [
-    { e: '🦁👑', a: 'Vua su tu' }, { e: '🕷️🧑', a: 'Nguoi nhen' },
-    { e: '❄️👸', a: 'Frozen' }, { e: '🧙‍♂️💍', a: 'Chua te nhan' },
+    { e: '🦁👑', a: 'Vua sư tử' }, { e: '🕷️🧑', a: 'Người nhện' },
+    { e: '❄️👸', a: 'Frozen' }, { e: '🧙‍♂️💍', a: 'Chúa tể nhẫn' },
     { e: '🦇🧑‍✈️', a: 'Batman' }, { e: '🚢💔', a: 'Titanic' },
     { e: '🌊🐠', a: 'Finding Nemo' }, { e: '🐀👨‍🍳', a: 'Ratatouille' },
     { e: '⚡🧙', a: 'Harry Potter' }, { e: '🤖❤️🌱', a: 'Wall-E' },
-    { e: '🏴‍☠️⚓', a: 'Cuop bien Caribe' }, { e: '🦈🌊', a: 'Jaws' },
+    { e: '🏴‍☠️⚓', a: 'Cướp biển Caribe' }, { e: '🦈🌊', a: 'Jaws' },
   ];
   const item = qs[Math.floor(Math.random() * qs.length)];
-  return `🎬 DOAN PHIM:\n${item.e}\n\n💡 ${item.a}`;
+  return `🎬 ĐOÁN PHIM:\n${item.e}\n\n💡 ${item.a}`;
 }
 
 function cardBattle() {
@@ -89,14 +89,14 @@ function cardBattle() {
   const bV = Math.floor(Math.random() * 13);
   const pC = vals[pV] + suits[Math.floor(Math.random() * 4)];
   const bC = vals[bV] + suits[Math.floor(Math.random() * 4)];
-  let msg = `🃏 SO BAI!\nBan: ${pC}\nBot: ${bC}\n\n`;
-  if (pV > bV) msg += '🎉 BAN THANG!';
-  else if (pV < bV) msg += '😈 BOT THANG!';
-  else msg += '🤝 HOA!';
+  let msg = `🃏 SO BÀI!\nBạn: ${pC}\nBot: ${bC}\n\n`;
+  if (pV > bV) msg += '🎉 BẠN THẮNG!';
+  else if (pV < bV) msg += '😈 BOT THẮNG!';
+  else msg += '🤝 HÒA!';
   return msg;
 }
 
-// Diem danh hang ngay
+// Điểm danh hàng ngày
 function checkin(economy, player) {
   const p = economy.getPlayer(player);
   const now = new Date();
@@ -107,9 +107,8 @@ function checkin(economy, player) {
   if (p.lastCheckin) {
     const last = new Date(p.lastCheckin);
     if (now.toDateString() === last.toDateString()) {
-      return `⏰ Ban da diem danh hom nay roi! (streak: ${p.checkinStreak} ngay)`;
+      return `⏰ Bạn đã điểm danh hôm nay rồi! (streak: ${p.checkinStreak} ngày)`;
     }
-    // Check streak
     const diff = (now - last) / (1000 * 60 * 60 * 24);
     if (diff <= 2) {
       p.checkinStreak++;
@@ -121,7 +120,7 @@ function checkin(economy, player) {
   }
 
   const base = 200;
-  const bonus = Math.min(p.checkinStreak * 50, 500); // Max bonus 500
+  const bonus = Math.min(p.checkinStreak * 50, 500);
   const reward = base + bonus;
 
   p.xu += reward;
@@ -129,10 +128,10 @@ function checkin(economy, player) {
   p.lastCheckin = now.toISOString();
   economy._save();
 
-  let msg = `📋 DIEM DANH!\n`;
-  msg += `🔥 Streak: ${p.checkinStreak} ngay lien tuc\n`;
-  msg += `+${base} xu (co ban) +${bonus} xu (streak)\n`;
-  msg += `= +${reward} xu!\nVi: ${p.xu} xu`;
+  let msg = `📋 ĐIỂM DANH!\n`;
+  msg += `🔥 Streak: ${p.checkinStreak} ngày liên tục\n`;
+  msg += `+${base} xu (cơ bản) +${bonus} xu (streak)\n`;
+  msg += `= +${reward} xu!\nVí: ${p.xu} xu`;
   return msg;
 }
 

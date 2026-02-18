@@ -69,47 +69,56 @@ class Bot {
   }
 
   // Mo tab moi cho 1 thread
-  async openTab(threadId, threadName) {
+  async openTab(threadId, threadName, threadUrl = null) {
     if (this.tabs.has(threadId)) return this.tabs.get(threadId);
 
     console.log(`[Bot] Mo tab moi: ${threadName} (${threadId})`);
     const page = await this.browser.newPage();
 
-    // Anti-detection
     await page.evaluateOnNewDocument(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
     });
 
-    // Navigate den thread
-    const url = `https://www.messenger.com/t/${threadId}`;
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    // FIX: Xử lý URL an toàn, chống bị dính "https://...https://..."
+    let finalUrl = `https://www.messenger.com/t/${threadId}`;
+    if (threadUrl) {
+      finalUrl = threadUrl.startsWith('http') ? threadUrl : `https://www.messenger.com${threadUrl.startsWith('/') ? '' : '/'}${threadUrl}`;
+    }
+      
+    // Loop goto + cho den khi doc duoc tin nhan that su
+    for (let attempt = 1; attempt <= 10; attempt++) {
+      try {
+        await page.goto(finalUrl, { waitUntil: 'domcontentloaded', timeout: 5000 });
+      } catch (e) {
+        console.log(`[Bot] Tab ${threadName}: goto retry (${attempt})`);
+        await this.sleep(1000);
+        continue;
+      }
+      // Cho [role="row"] xuat hien
+      const found = await page.waitForSelector('[role="row"]', { timeout: 3000 }).catch(() => null);
+      if (found) break;
+      console.log(`[Bot] Tab ${threadName}: cho DOM render... (${attempt})`);
+    }
     await this.sleep(2000);
 
-    // Doi textbox xuat hien (thread da load xong)
-    await page.waitForSelector('[role="textbox"]', { timeout: 10000 }).catch(() => {});
-
-    const tabInfo = {
-      page,
-      threadId,
-      name: threadName,
-      isGroup: null, // detect sau
-    };
-
+    const tabInfo = { page, threadId, name: threadName, isGroup: null };
     this.tabs.set(threadId, tabInfo);
 
-    // Detect group/DM
     tabInfo.isGroup = await this.detectGroup(page);
 
-    // Init: danh dau tat ca tin nhan hien tai la "da xu ly"
     const initMsgs = await this.readMessages(tabInfo.page, 30, threadId, tabInfo.isGroup);
+    const now = Date.now();
     for (const msg of initMsgs) {
-      const hash = this.generateMsgHash(msg);
-      this.processedMsgIds.add(hash);
+      if (now - msg.timestamp > 60000) {
+        const hash = this.generateMsgHash(msg);
+        this.processedMsgIds.add(hash);
+      }
     }
+    
     if (!this.getCheckpoint(threadId) && initMsgs.length > 0) {
       this.saveCheckpoint(threadId, initMsgs[initMsgs.length - 1]);
     }
-    console.log(`[Bot] Tab ${threadName}: init ${initMsgs.length} tin da xu ly`);
+    console.log(`[Bot] Tab ${threadName}: init ${initMsgs.length} tin, san sang nhan tin moi`);
 
     return tabInfo;
   }
@@ -124,82 +133,111 @@ class Bot {
   }
 
 // Doc tin nhan tu 1 tab (page) - SU DUNG REACT FIBER DE LAY ID
-  async readMessages(page, count = 20) {
+  async readMessages(page, count = 20, threadId = null, isGroup = false) {
     try {
-      return await page.evaluate((cnt) => {
-        const messages = [];
-        const rows = Array.from(document.querySelectorAll('[role="row"]'));
-        // Lấy những tin nhắn cuối cùng để check
-        const targetRows = rows.slice(-cnt);
+      await page.waitForSelector('[role="row"]', { timeout: 2000 }).catch(() => {});
+      const myId = config.myId; // Khai báo ID bot của bạn trong config.js nhé
 
-        for (const row of targetRows) {
-            const textDiv = row.querySelector('div[dir="auto"]');
-            if (!textDiv) continue;
-
-            // --- LOGIC CỦA BẠN: TIM REACT FIBER KEY ---
-            const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
-            if (!key) continue;
-            let fiber = textDiv[key];
-
-            // --- LOGIC CỦA BẠN: LEO 15 CẤP TÌM MESSAGE DATA ---
-            let messageData = null;
-            let cleanText = "";
-            let currentFiber = fiber;
-
-            for (let i = 0; i < 20; i++) {
-                if (!currentFiber) break;
-                const props = currentFiber.memoizedProps;
-                
-                // Tìm thấy object message chứa ID, Timestamp, SenderID
-                if (props && props.message) {
-                    messageData = props.message;
-                }
-                
-                // Lấy text sạch (tránh icon, null)
-                if (props && props.text && typeof props.text === 'string' && !props.message) {
-                    if (props.text.length < 500 && !props.text.includes('##')) {
-                        cleanText = props.text;
-                    }
-                }
-                currentFiber = currentFiber.return;
-            }
-
-            // Nếu tìm thấy data, format lại để Bot xử lý
-            if (messageData) {
-                // Xác định người gửi
-                // isOutgoing = true => Là tin mình gửi (Me)
-                const isMe = messageData.isOutgoing === true; 
-                const senderId = messageData.senderId; 
-                const senderName = isMe ? 'Me' : (messageData.senderName || 'User');
-
-                // Lấy timestamp (quan trọng cho logic 1 phút)
-                // FB thường lưu là timestampMs (milisecond)
-                const timestamp = Number(messageData.timestampMs || messageData.timestamp || Date.now());
-
-                // Lấy messageId (quan trọng để reply chính xác)
-                const messageId = messageData.messageId;
-
-                // Lấy nội dung
-                const text = messageData.body || cleanText || "Attachment/Sticker";
-
-                messages.push({ 
-                    text, 
-                    sender: senderName, 
-                    senderId, 
-                    isMe, 
-                    timestamp, 
-                    messageId // ID chuẩn từ React Fiber
-                });
-            }
+      return await page.evaluate((cnt, _myId) => {
+        
+        // VŨ KHÍ TỐI THƯỢNG: Trị mọi định dạng ID biến thái của FB E2EE
+        function parseFbData(data) {
+          if (!data) return null;
+          if (typeof data === 'string' || typeof data === 'number') return String(data);
+          if (Array.isArray(data)) return data.join('_');
+          if (typeof data === 'object') {
+             // Lấy ID thật sự trong cái Object {"0": "...", "1": "...", "_tag": "i64"}
+             if (data["1"] !== undefined) return data["0"] + "_" + data["1"];
+             // Fallback vạn năng
+             return JSON.stringify(data);
+          }
+          return String(data);
         }
-        return messages;
-      }, count);
+
+        // Decode i64 (Object/Array 2 phan) thanh so thuc (dung cho senderId, timestamp)
+        function decodeI64(raw) {
+          if (!raw) return null;
+          if (typeof raw === 'string' || typeof raw === 'number') return String(raw);
+          if (Array.isArray(raw) && raw.length === 2) {
+            try { return ((BigInt(raw[0]) << 32n) + BigInt(raw[1])).toString(); } catch(e) { return null; }
+          }
+          if (typeof raw === 'object' && raw["1"] !== undefined) {
+            try { return ((BigInt(raw["0"]) << 32n) + BigInt(raw["1"])).toString(); } catch(e) { return null; }
+          }
+          return null;
+        }
+
+        const results = [];
+        // Cố tình lấy dư ra để quét không trượt phát nào
+        const rows = Array.from(document.querySelectorAll('[role="row"]')).slice(-cnt);
+
+        rows.forEach(row => {
+          const textDiv = row.querySelector('div[dir="auto"]');
+          if (!textDiv) return;
+
+          const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
+          if (!key) return;
+          let currentFiber = textDiv[key];
+
+          let messageData = null;
+          let cleanText = "";
+
+          // Leo 25 bậc tìm cục Data (chống FB giấu sâu)
+          for (let i = 0; i < 25; i++) {
+            if (!currentFiber) break;
+            const props = currentFiber.memoizedProps;
+            
+            if (props && props.message) { 
+                messageData = props.message; 
+                break; 
+            }
+            if (props && props.text && typeof props.text === 'string' && !props.message) {
+              if (props.text.length < 500 && !props.text.includes('##')) {
+                  cleanText = props.text;
+              }
+            }
+            currentFiber = currentFiber.return;
+          }
+
+          if (messageData) {
+            // 1. Chuẩn hoá ID Tin Nhắn (parseFbData OK - chi can unique)
+            const messageId = parseFbData(messageData.messageId) || `no_id_${Math.random()}`;
+            // Decode i64 cho senderId (can gia tri that de match voi economy/admin)
+            const senderId = decodeI64(messageData.senderId) || 'Unknown';
+            let senderName = messageData.senderName || 'User';
+
+            // 2. Chuẩn hoá Thời gian (decode i64 -> ms)
+            let rawTime = messageData.timestampMs || messageData.timestamp;
+            let timestamp = Number(decodeI64(rawTime)) || Date.now();
+
+            // 3. Chuẩn hoá isMe
+            let isMe = messageData.isOutgoing === true || messageData.outgoing === true;
+            if (_myId && senderId === _myId) isMe = true;
+            if (isMe) senderName = 'Me';
+
+            // DBG: dump isOutgoing raw
+            const _dbg = { isOutgoing: messageData.isOutgoing, outgoing: messageData.outgoing, senderId, senderName: messageData.senderName };
+
+            results.push({
+              messageId: messageId,
+              text: messageData.body || cleanText || "Media/Sticker",
+              timestamp: timestamp,
+              senderId: senderId,
+              sender: senderName,
+              isMe: isMe,
+              _dbg: _dbg
+            });
+          }
+        });
+
+        return results;
+      }, count, myId);
+
     } catch (err) {
-      console.log('[Bot] Lỗi đọc tin React Fiber:', err.message);
+      console.log('[Bot] Loi doc React Fiber:', err.message);
       return [];
     }
   }
-
 
   // Gui tin nhan vao 1 tab
   async sendMessage(page, text) {
@@ -277,17 +315,24 @@ class Bot {
   // Detect group chat tu 1 page
   async detectGroup(page) {
     try {
-      const url = page.url();
-      if (url.includes('/g/')) return true;
       return await page.evaluate(() => {
-        const main = document.querySelector('[role="main"]');
-        if (!main) return false;
-        const text = main.textContent || '';
-        if (/\d+\s*(members|thành viên|người)/i.test(text)) return true;
-        const headers = main.querySelectorAll('h2, h3');
-        for (const h of headers) {
-          if (h.textContent.includes(',') && h.textContent.split(',').length >= 2) return true;
+        // Nút "Thành viên trong đoạn chat" hoặc "Chat members"
+        const memberBtns = document.querySelectorAll('[aria-label="Thành viên trong đoạn chat"], [aria-label="Chat members"], [aria-label="Cài đặt nhóm"]');
+        if (memberBtns.length > 0) return true;
+
+        // Hoặc check cái Top Bar xem có icon nhóm (Group avatar thường là 1 cụm SVG đặc biệt)
+        const topBar = document.querySelector('div[role="main"] h2'); // Tên group
+        if (topBar && topBar.innerText.includes(',')) {
+            // Tên mặc định của group chưa đặt tên thường là "A, B, C"
+            return true;
         }
+
+        // Check xem có nút "Rời khỏi nhóm" trong DOM không
+        const text = document.body.innerText;
+        if (text.includes('Thành viên trong đoạn chat') || text.includes('Cài đặt đoạn chat')) {
+            return true;
+        }
+
         return false;
       });
     } catch { return false; }
@@ -298,60 +343,62 @@ class Bot {
     try {
       return await this.mainPage.evaluate(() => {
         const threads = [];
-        const links = document.querySelectorAll('a[href*="/t/"]');
+        // Lấy các liên kết chat ở cột trái (bao gồm cả DM thường và E2EE)
+        const links = document.querySelectorAll('div[role="navigation"] a[href*="/t/"], [role="main"] a[href*="/t/"]');
         const seen = new Set();
 
         for (const link of links) {
           const href = link.getAttribute('href') || '';
-          const match = href.match(/\/t\/(\d+)/);
+          
+          // Match lấy ID (bỏ qua tiền tố /e2ee/ nếu có)
+          const match = href.match(/(?:\/e2ee)?\/t\/(\d+)/);
           if (!match) continue;
+          
           const threadId = match[1];
           if (seen.has(threadId)) continue;
           seen.add(threadId);
 
-          // Lay ten tu span - chi lay span DAU TIEN co bold (ten thread)
-          // Bo qua cac span sau (noi dung tin nhan, thoi gian, v.v.)
-          const spans = link.querySelectorAll('span');
           let hasUnread = false;
-          let name = '';
-          let foundName = false;
+          let name = threadId; // Mặc định nếu không móc được tên
 
-          for (const span of spans) {
-            const text = span.textContent.trim();
-            const style = window.getComputedStyle(span);
-            const isBold = parseInt(style.fontWeight) >= 700 || style.fontWeight === 'bold';
-
-            if (isBold) {
+          // 1. CÁCH 1: Tìm text tàng hình "Tin nhắn chưa đọc:" của FB
+          const fullText = link.innerText || '';
+          if (fullText.toLowerCase().includes('tin nhắn chưa đọc') || fullText.toLowerCase().includes('unread message')) {
               hasUnread = true;
-              // Chi lay ten DANG TIEN - span dau tien co noi dung hop le
-              // Ten thread thuong ngan (< 30 ky tu) va khong chua / hoac cac ky tu command
-              if (!foundName && text.length > 0 && text.length < 40) {
-                // Bo qua neu la thoi gian (vd: "2 gio", "10:30")
-                // Bo qua neu la noi dung tin (thuong dai hon hoac chua /)
-                if (!text.match(/^\d+\s*(gio|phut|giay|h|m|s|:)/i) &&
-                    !text.startsWith('/') &&
-                    !text.includes('sent') && !text.includes('gui')) {
-                  name = text;
-                  foundName = true;
-                }
+          }
+
+          // 2. CÁCH 2: Quét CSS độ đậm của chữ (Trị triệt để)
+          const spans = Array.from(link.querySelectorAll('span'));
+          for (const span of spans) {
+              const text = span.innerText.trim();
+              if (!text) continue;
+              
+              const style = window.getComputedStyle(span);
+              const fw = parseInt(style.fontWeight);
+              
+              // Nếu Font là 600 (Tên in đậm) hoặc 700/bold (Nội dung in đậm) -> Là tin chưa đọc
+              if (fw >= 600 || style.fontWeight === 'bold') {
+                  hasUnread = true;
+                  
+                  // Lọc lấy tên: Thường tên có Font-weight 600, không chứa chữ "Tin nhắn" và ngắn gọn
+                  if (fw === 600 && text.length < 40 && !text.includes('Tin nhắn') && !text.includes('Unread')) {
+                      name = text;
+                  }
               }
-            }
+              
+              // Cứ bóc cái tên ra dự phòng kể cả khi đã đọc (fw 500)
+              if (!name || name === threadId) {
+                  if (fw === 500 && text.length > 0 && text.length < 40) name = text;
+              }
           }
 
-          const ariaLabel = link.getAttribute('aria-label') || '';
-          if (ariaLabel.toLowerCase().includes('unread')) hasUnread = true;
-
-          // Neu chua tim duoc ten tu spans, thu lay tu aria-label
-          if (!name && ariaLabel) {
-            // aria-label thuong co dang "Chat voi Ten Nguoi"
-            const labelMatch = ariaLabel.match(/(?:Chat with|Chat voi|Trò chuyện với)\s+(.+)/i);
-            if (labelMatch) name = labelMatch[1].trim();
-            // Hoac chi la ten
-            else if (ariaLabel.length < 40 && !ariaLabel.includes('unread')) name = ariaLabel;
-          }
-
-          if (hasUnread && threadId) {
-            threads.push({ id: threadId, name: name || threadId });
+          // Nếu có tin chưa đọc thì nhét vào Queue để bot chuyển Tab xử lý
+          if (hasUnread) {
+            threads.push({
+                id: threadId,
+                name: name,
+                url: href // Gửi kèm URL gốc (rất quan trọng cho E2EE)
+            });
           }
         }
         return threads;
@@ -405,86 +452,6 @@ class Bot {
     }
   }
 
-  async readMessages(page, count = 20, threadId = null, isGroup = false) {
-    try {
-      await page.waitForSelector('[role="row"]', { timeout: 2000 }).catch(() => {});
-      
-      // Lay ID cua minh tu config de so sanh
-      const myId = config.myId; 
-
-      return await page.evaluate((cnt, _myId) => {
-        const results = [];
-        const rows = Array.from(document.querySelectorAll('[role="row"]'));
-        const targetRows = rows.slice(-cnt);
-
-        targetRows.forEach(row => {
-            const textDiv = row.querySelector('div[dir="auto"]');
-            if (!textDiv) return;
-            
-            const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
-            if (!key) return;
-            const fiber = textDiv[key];
-
-            let messageData = null;
-            let cleanText = "";
-            let currentFiber = fiber;
-            
-            // Leo 20 cap cha
-            for (let i = 0; i < 20; i++) {
-                if (!currentFiber) break;
-                const props = currentFiber.memoizedProps;
-                
-                if (props && props.message) messageData = props.message;
-                
-                if (props && props.text && typeof props.text === 'string' && !props.message) {
-                    if (props.text.length < 500 && !props.text.includes('##')) {
-                        cleanText = props.text;
-                    }
-                }
-                currentFiber = currentFiber.return;
-            }
-
-            if (messageData) {
-                // 1. FIX TIME: Lay timestamp hoac Date.now()
-                let timestamp = Number(messageData.timestampMs || messageData.timestamp);
-                if (!timestamp || isNaN(timestamp)) timestamp = Date.now();
-
-                // 2. FIX SENDER ID & NAME
-                const senderId = messageData.senderId || 'Unknown';
-                // Thu tim ten trong messageData, neu khong co thi fallback
-                let senderName = messageData.senderName || 'User';
-
-                // 3. FIX ISME (QUAN TRONG NHAT)
-                // - Check 1: isOutgoing cua FB
-                // - Check 2: So sanh senderId voi myId (trong config)
-                // - Check 3: Neu senderId chinh la threadId (trong truong hop chat 1-1 la minh gui) -> sai logic nay bo qua
-                let isMe = messageData.isOutgoing === true;
-                
-                if (_myId && senderId === _myId) isMe = true;
-                
-                // FIX LOG NAME UNDEFINED
-                if (isMe) senderName = 'Me';
-
-                results.push({
-                    messageId: messageData.messageId,
-                    text: messageData.body || cleanText || "Media/Sticker",
-                    timestamp: timestamp,
-                    senderId: senderId,
-                    sender: senderName, // Them truong sender name de log khong bi undefined
-                    isMe: isMe
-                });
-            }
-        });
-
-        return results;
-      }, count, myId);
-
-    } catch (err) {
-      console.log('[Bot] Loi doc React Fiber:', err.message);
-      return [];
-    }
-  }
-
   findNewMessages(messages, threadId) {
     const newMsgs = [];
     const now = Date.now();
@@ -513,57 +480,6 @@ class Bot {
     return newMsgs.reverse();
   }
 
-  // Check tab & Reply
-  async checkTab(threadId, tab, focus = false) {
-    try {
-      if (tab.page.isClosed()) { this.tabs.delete(threadId); return; }
-
-      if (focus) {
-        await tab.page.bringToFront();
-        await this.sleep(1500); 
-      }
-
-      let loopCount = 0;
-      while (loopCount < 3) { // Quet toi da 3 batch
-        loopCount++;
-        const messages = await this.readMessages(tab.page, 30, threadId, tab.isGroup);
-        if (!messages.length) break;
-
-        const newMsgs = this.findNewMessages(messages, threadId);
-        if (newMsgs.length === 0) break;
-
-        console.log(`[Bot] ${tab.name}: Phat hien ${newMsgs.length} tin moi (Batch ${loopCount})`);
-
-        for (const msg of newMsgs) {
-            console.log(`[Bot] >> Xu ly: "${msg.text.substring(0,20)}..." | Time: ${new Date(msg.timestamp).toLocaleTimeString()}`);
-            
-            // Xu ly & Reply
-            const reply = await this.processMessage(msg, threadId, tab.isGroup, tab.page);
-            if (reply) {
-                await this.sleep(500); 
-                if (typeof reply === 'string') {
-                    const sent = await this.replyToMessage(tab.page, msg.text, reply);
-                    if (!sent) await this.sendMessage(tab.page, reply);
-                }
-            }
-
-            // DANH DAU DA XU LY
-            const uniqueId = msg.messageId || `${msg.senderId}_${msg.timestamp}`;
-            this.processedMsgIds.add(uniqueId);
-            
-            // Don dep bo nho (Giu 500 tin gan nhat)
-            if (this.processedMsgIds.size > 500) {
-                const it = this.processedMsgIds.values();
-                this.processedMsgIds.delete(it.next().value);
-            }
-            await this.sleep(300);
-        }
-        await this.sleep(1000);
-      }
-    } catch (err) {
-      console.log(`[Bot] Loi check tab ${tab.name}:`, err.message);
-    }
-  }
 
   // Parse message (DM va Group deu dung / de goi lenh)
   parseMessage(text, isGroup) {
@@ -638,7 +554,6 @@ class Bot {
     }
 
     const parsed = this.parseMessage(this.sanitize(msg.text), isGroup);
-    if (parsed.ignored) return null;
 
     // ctx dung senderId thay vi sender name
     const ctx = {
@@ -648,11 +563,20 @@ class Bot {
       isGroup,
     };
 
-    // Dang choi game -> forward input (dung senderId)
+    // Dang choi game -> forward input (dung senderId) - CHECK TRUOC KHI BO QUA
+    // Fix: trong group, tin khong co / van phai check game (vd: "hit" trong blackjack)
     if (games.hasActiveGame(threadId) && !parsed.isCommand) {
       const result = games.handleGameInput(threadId, parsed.raw, senderId);
       if (result) return result;
+      // Neu co lottery dang chay, check expired
+      const session = games.getSession(threadId);
+      if (session && session.type === 'lottery') {
+        const lotteryResult = games.lottery.checkExpired(session, threadId, games);
+        if (lotteryResult) return lotteryResult;
+      }
     }
+
+    if (parsed.ignored) return null;
 
     if (parsed.isCommand && parsed.command) {
       const cmd = parsed.command.toLowerCase();
@@ -728,71 +652,111 @@ class Bot {
   async replyByMessageId(page, targetMid, content) {
     if (!targetMid) return false;
     try {
-      // 1. Tim row chua messageId trong DOM
-      const rowHandle = await page.evaluateHandle((mid) => {
-        const allRows = document.querySelectorAll('[role="row"]');
-        for (const row of allRows) {
+      // Bê toàn bộ thao tác Tìm ID -> Hover -> Click xuống thẳng Trình Duyệt
+      const clicked = await page.evaluate(async (mid) => {
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        const rows = Array.from(document.querySelectorAll('[role="row"]'));
+
+        // VŨ KHÍ TỐI THƯỢNG: Phải mang hàm này vào trong browser thì nó mới hiểu
+        function parseFbData(data) {
+          if (!data) return null;
+          if (typeof data === 'string' || typeof data === 'number') return String(data);
+          if (Array.isArray(data)) return data.join('_');
+          if (typeof data === 'object') {
+             if (data["1"] !== undefined) return data["0"] + "_" + data["1"];
+             return JSON.stringify(data);
+          }
+          return String(data);
+        }
+
+        // Quét ngược từ dưới lên (tin mới nhất) để tìm nhanh nhất
+        for (let i = rows.length - 1; i >= 0; i--) {
+          const row = rows[i];
           const textDiv = row.querySelector('div[dir="auto"]');
           if (!textDiv) continue;
+          
           const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
           if (!key) continue;
           let fiber = textDiv[key];
-          for (let i = 0; i < 20; i++) {
+          
+          let isMatch = false;
+          // Leo 25 cấp tìm ID
+          for (let j = 0; j < 25; j++) {
             if (!fiber) break;
-            if (fiber.memoizedProps?.message?.messageId === mid) {
-              row.scrollIntoView({ block: 'center', behavior: 'instant' });
-              return row;
+            const props = fiber.memoizedProps;
+            if (props && props.message && props.message.messageId) {
+              // DÙNG HÀM PARSE CHUẨN ĐỂ SO SÁNH
+              let currentMid = parseFbData(props.message.messageId);
+              
+              if (currentMid === mid) {
+                isMatch = true;
+                break;
+              }
             }
             fiber = fiber.return;
           }
-        }
-        return null;
-      }, targetMid);
 
-      const rowEl = rowHandle.asElement();
-      if (!rowEl) return false;
+          // NẾU TÌM THẤY ĐÚNG TIN NHẮN ĐÓ
+          if (isMatch) {
+            // 1. Cuộn chuột tới giữa màn hình cho dễ bấm
+            row.scrollIntoView({ block: 'center', behavior: 'instant' });
+            await sleep(300);
 
-      // 2. Hover de hien nut Reply
-      const bubble = await rowEl.$('div[dir="auto"]');
-      await (bubble || rowEl).hover();
-      await this.sleep(600);
+            // 2. Bắn Event Hover thẳng vào DOM (Vượt hitbox chặn chuột của FB)
+            row.dispatchEvent(new MouseEvent('mouseover', { bubbles: true, cancelable: true, view: window }));
+            await sleep(400); // Chờ 0.4s cho FB render nút Reply
 
-      // 3. Tim nut Reply
-      let replyBtn = await rowEl.$('[aria-label="Trả lời"], [aria-label="Reply"]');
+            // 3. Quét tìm nút "Trả lời"
+            let replyBtn = row.querySelector('[aria-label="Trả lời"], [aria-label="Reply"]');
 
-      if (!replyBtn) {
-        // Thu nut "More" (...)
-        const moreBtn = await rowEl.$('[aria-label="Xem thêm"], [aria-label="More"], [aria-label="Khác"]');
-        if (moreBtn) {
-          await moreBtn.click();
-          await this.sleep(500);
-          replyBtn = await page.$('[role="menuitem"][aria-label="Trả lời"]')
-                  || await page.$('[role="menuitem"][aria-label="Reply"]');
-          if (!replyBtn) {
-            const handle = await page.evaluateHandle(() => {
-              const items = document.querySelectorAll('[role="menuitem"]');
-              for (const item of items) {
-                if (item.textContent.includes('Trả lời') || item.textContent.includes('Reply')) return item;
+            // Nếu nó bị giấu trong nút "Xem thêm" (Cập nhật UI mới)
+            if (!replyBtn) {
+              const moreBtn = row.querySelector('[aria-label="Xem thêm"], [aria-label="More"], [aria-label="Khác"]');
+              if (moreBtn) {
+                moreBtn.click();
+                await sleep(400);
+                
+                // Lục trong menu vừa xổ ra
+                replyBtn = document.querySelector('[role="menuitem"][aria-label="Trả lời"], [role="menuitem"][aria-label="Reply"]');
+                if (!replyBtn) {
+                  const items = document.querySelectorAll('[role="menuitem"]');
+                  for (const item of items) {
+                    if (item.textContent.includes('Trả lời') || item.textContent.includes('Reply')) {
+                      replyBtn = item;
+                      break;
+                    }
+                  }
+                }
               }
-              return null;
-            });
-            replyBtn = handle.asElement();
+            }
+
+            // 4. CHỐT HẠ: Click nút Trả lời
+            if (replyBtn) {
+              replyBtn.click();
+              return true;
+            } else {
+              // Nhả hover ra nếu tìm không thấy để không bị kẹt UI
+              row.dispatchEvent(new MouseEvent('mouseout', { bubbles: true }));
+              return false; 
+            }
           }
         }
+        return false; // Tìm mỏi mắt không thấy ID này
+      }, targetMid);
+
+      if (!clicked) {
+        console.log(`[Bot] ⚠️ Không click được nút Reply cho ID: ${targetMid.substring(0, 15)}... (Gửi tin thường)`);
+        return false; 
       }
 
-      if (!replyBtn) {
-        console.log(`[Reply] Khong thay nut Reply cho mid: ${targetMid}`);
-        return false;
-      }
-
-      await replyBtn.click();
+      // Đợi Facebook render cái khung Reply phía trên Textbox
       await this.sleep(800);
-
-      // 4. Go noi dung va gui
+      
+      // Bắt đầu gõ và gửi
       return await this.sendMessage(page, content);
+      
     } catch (err) {
-      console.log(`[Reply] Loi reply mid ${targetMid}:`, err.message);
+      console.log(`[Bot] Lỗi reply mid ${targetMid}:`, err.message);
       return false;
     }
   }
@@ -806,17 +770,52 @@ class Bot {
         const unreads = await this.scanUnreads();
         for (const thread of unreads) {
           if (!this.tabs.has(thread.id)) {
-            await this.openTab(thread.id, thread.name);
+            await this.openTab(thread.id, thread.name, thread.url);
           }
         }
 
-        // 2. Doc tin nhan tu tat ca tab dang mo
+        // 2. Check lottery/duel auto-expiry cho moi thread co session
+        for (const [threadId, session] of games.sessions) {
+          if (session.type === 'lottery') {
+            const result = games.lottery.checkExpired(session, threadId, games);
+            if (result) {
+              const tab = this.tabs.get(threadId);
+              if (tab && !tab.page.isClosed()) {
+                await tab.page.bringToFront();
+                await this.sleep(300);
+                await this.sendMessage(tab.page, result);
+                console.log(`[Bot] Lottery expired in ${tab.name}, sent result`);
+              }
+            }
+          }
+          if (session.type === 'duel' && session.endTime && Date.now() >= session.endTime) {
+            // Duel timeout - hoan xu va xoa session
+            const challenger = session.challenger;
+            games.economy.addXu(challenger.id, challenger.bet);
+            games.sessions.delete(threadId);
+            const tab = this.tabs.get(threadId);
+            if (tab && !tab.page.isClosed()) {
+              await tab.page.bringToFront();
+              await this.sleep(300);
+              await this.sendMessage(tab.page, `⚔️ Thach dau het han! Hoan ${challenger.bet} xu cho ${games.economy.getDisplayName(challenger.id)}.`);
+            }
+          }
+        }
+
+        // 3. Doc tin nhan tu tat ca tab dang mo
         for (const [threadId, tab] of this.tabs) {
           if (tab.page.isClosed()) { this.tabs.delete(threadId); continue; }
 
           try {
             const messages = await this.readMessages(tab.page, 30, threadId, tab.isGroup);
-            if (!messages.length) continue;
+            if (!messages.length) { console.log(`[R] ${tab.name}: 0 msgs`); continue; }
+
+            // DBG: log 2 tin cuoi (ca isOutgoing raw)
+            const tail = messages.slice(-2);
+            for (const m of tail) {
+              const age = Math.round((Date.now() - m.timestamp) / 1000);
+              console.log(`[R] "${m.text.substring(0,12)}" sid=${m.senderId} isMe=${m.isMe} raw=${JSON.stringify(m._dbg)}`);
+            }
 
             const newMsgs = this.findNewMessages(messages, threadId);
             if (!newMsgs.length) continue;
@@ -910,7 +909,7 @@ class Bot {
       const unreads = await this.scanUnreads();
       console.log(`[Bot] Tim thay ${unreads.length} thread chua doc.`);
       for (const thread of unreads) {
-        await this.openTab(thread.id, thread.name);
+        await this.openTab(thread.id, thread.name, thread.url);
       }
     } catch (err) {
       console.log('[Bot] Loi init scan:', err.message);

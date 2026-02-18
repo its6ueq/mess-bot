@@ -1,4 +1,4 @@
-// Bau Cua Tom Ca - co cuoc xu
+// Bầu Cua Tôm Cá - có cược xu
 
 const items = ['bau', 'cua', 'tom', 'ca', 'ga', 'nai'];
 const emojis = { bau: '🍐', cua: '🦀', tom: '🦐', ca: '🐟', ga: '🐔', nai: '🦌' };
@@ -14,27 +14,27 @@ function play(ctx, args) {
   const pick = aliases[parts[0]?.toLowerCase()];
   const bet = parseInt(parts[1]) || 100;
 
-  if (!pick) return `Cu phap: /baucua <con> [xu]\n${items.map(i => `${emojis[i]} ${i}`).join(' | ')}`;
+  if (!pick) return `Cú pháp: /baucua <con> [xu]\n${items.map(i => `${emojis[i]} ${i}`).join(' | ')}`;
 
   const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Ban chi co ${bal.xu} xu!`;
+  if (bal.xu < bet) return `Bạn chỉ có ${bal.xu} xu!`;
 
   economy.removeXu(player, bet);
 
   const r = [0, 0, 0].map(() => items[Math.floor(Math.random() * 6)]);
   const matches = r.filter(x => x === pick).length;
 
-  let msg = `🎰 BAU CUA! Cuoc: ${bet} xu (${emojis[pick]})\n`;
+  let msg = `🎰 BẦU CUA! Cược: ${bet} xu (${emojis[pick]})\n`;
   msg += `${r.map(x => emojis[x]).join(' ')}\n\n`;
 
   if (matches === 0) {
     economy.recordGame(player, false);
-    msg += `💀 Khong trung! -${bet} xu`;
+    msg += `💀 Không trúng! -${bet} xu`;
   } else {
     const win = bet * (matches + 1);
     economy.addXu(player, win);
     economy.recordGame(player, true);
-    msg += `🎉 Trung ${matches} mat! +${win} xu`;
+    msg += `🎉 Trúng ${matches} mặt! +${win} xu`;
   }
 
   return msg;

@@ -1,4 +1,4 @@
-// Wordle - doan tu 5 chu cai
+// Wordle - đoán từ 5 chữ cái
 
 const WORDS = [
   'HELLO', 'WORLD', 'CANDY', 'DREAM', 'FLAME', 'GHOST', 'HOUSE', 'JUICE',
@@ -24,7 +24,7 @@ function start(ctx) {
     player,
   });
 
-  return `📝 WORDLE!\nDoan tu 5 chu cai (tieng Anh).\nBan co 6 luot.\n🟩 = dung vi tri | 🟨 = co nhung sai cho | ⬛ = khong co\n\nNhap tu 5 chu di!`;
+  return `📝 WORDLE!\nĐoán từ 5 chữ cái (tiếng Anh).\nBạn có 6 lượt.\n🟩 = đúng vị trí | 🟨 = có nhưng sai chỗ | ⬛ = không có\n\nNhập từ 5 chữ đi!`;
 }
 
 function handleInput(ctx, text) {
@@ -32,13 +32,12 @@ function handleInput(ctx, text) {
   const guess = text.toUpperCase().trim();
 
   if (guess.length !== 5 || !/^[A-Z]+$/.test(guess)) {
-    return 'Nhap dung 5 chu cai tieng Anh!';
+    return 'Nhập đúng 5 chữ cái tiếng Anh!';
   }
 
   const result = checkWord(session.word, guess);
   session.attempts.push({ guess, result });
 
-  // Hien thi tat ca cac luot doan
   let board = '📝 WORDLE:\n';
   for (const attempt of session.attempts) {
     board += attempt.result + ' ' + attempt.guess + '\n';
@@ -49,17 +48,17 @@ function handleInput(ctx, text) {
     economy.addXu(session.player, reward);
     economy.recordGame(session.player, true);
     endGame();
-    return `${board}\n🎉 DUNG ROI! Tu la: ${session.word}\n${session.attempts.length}/${session.maxAttempts} luot. +${reward} xu`;
+    return `${board}\n🎉 ĐÚNG RỒI! Từ là: ${session.word}\n${session.attempts.length}/${session.maxAttempts} lượt. +${reward} xu`;
   }
 
   if (session.attempts.length >= session.maxAttempts) {
     economy.recordGame(session.player, false);
     endGame();
-    return `${board}\n💀 Het luot! Tu dung la: ${session.word}`;
+    return `${board}\n💀 Hết lượt! Từ đúng là: ${session.word}`;
   }
 
   const left = session.maxAttempts - session.attempts.length;
-  return `${board}\nCon ${left} luot.`;
+  return `${board}\nCòn ${left} lượt.`;
 }
 
 function checkWord(answer, guess) {
@@ -67,7 +66,6 @@ function checkWord(answer, guess) {
   const ansArr = answer.split('');
   const used = [false, false, false, false, false];
 
-  // Pass 1: tim dung vi tri (xanh la)
   for (let i = 0; i < 5; i++) {
     if (guess[i] === ansArr[i]) {
       result[i] = '🟩';
@@ -75,7 +73,6 @@ function checkWord(answer, guess) {
     }
   }
 
-  // Pass 2: tim co nhung sai vi tri (vang)
   for (let i = 0; i < 5; i++) {
     if (result[i] === '🟩') continue;
     for (let j = 0; j < 5; j++) {

@@ -28,6 +28,18 @@ async function main() {
   }
 
   await new Promise(r => setTimeout(r, 3000));
+
+  // Auto-detect ID tu cookie c_user (Facebook luu ID nguoi dang nhap)
+  const cookies = await page.cookies('https://www.messenger.com');
+  const cUser = cookies.find(c => c.name === 'c_user');
+  if (cUser) {
+    const config = require('./config');
+    config.myId = cUser.value;
+    console.log(`[Main] Auto-detect bot ID: ${cUser.value}`);
+  } else {
+    console.log('[Main] Khong tim thay cookie c_user!');
+  }
+
   console.log('[Main] Messenger da san sang!');
 
   // 3. Khoi dong Bot voi browser + main page

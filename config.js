@@ -9,7 +9,7 @@ module.exports = {
   // Bot identity
   botName: process.env.BOT_NAME || 'Bot',
   myName: process.env.MY_NAME || 'Nguyễn Duy',
-  myId: process.env.MY_ID || '61568421755135',
+  myId: process.env.MY_ID || '', // Auto-detect tu cookie trong index.js
 
   // Admins - dung Facebook User ID (so)
   // Admins - dung Facebook User ID (so)

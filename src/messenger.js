@@ -179,89 +179,82 @@ class Messenger {
   // Doc tin nhan - tra ve [{ text, sender, senderId, isMe }]
   async getLatestMessages(count = 20) {
     try {
-      const threadId = this.currentThread;
-      let fallbackName = this.threadNames.get(threadId) || null;
-      if (!fallbackName) {
-        fallbackName = await this.getThreadName();
-        if (fallbackName && fallbackName !== 'Unknown' && threadId) {
-          this.threadNames.set(threadId, fallbackName);
+      const myId = config.myId; // Khai báo ID của bot trong config nhé
+      
+      return await this.page.evaluate((cnt, _myId) => {
+        function decodeBigInt(arr) {
+          if (!arr) return null;
+          if (typeof arr === 'string' || typeof arr === 'number') return String(arr);
+          if (Array.isArray(arr) && arr.length === 2) {
+            try { return ((BigInt(arr[0]) << 32n) + BigInt(arr[1])).toString(); } catch (e) { return null; }
+          }
+          return null;
         }
-      }
 
-      const myId = config.myId;
-      return await this.page.evaluate((cnt, myName, threadName, _myId, _threadId) => {
-        const messages = [];
-        const rowElements = document.querySelectorAll('[role="row"]');
+        const results = [];
+        const rows = Array.from(document.querySelectorAll('[role="row"]')).slice(-cnt);
 
-        const start = Math.max(0, rowElements.length - cnt);
-        const recentRows = Array.from(rowElements).slice(start);
+        rows.forEach(row => {
+          const textDiv = row.querySelector('div[dir="auto"]');
+          if (!textDiv) return;
 
-        let lastSender = '';
-        let lastSenderId = '';
+          const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
+          if (!key) return;
+          let fiber = textDiv[key];
 
-        for (const row of recentRows) {
-          const divDirAuto = row.querySelector('div[dir="auto"]');
-          if (!divDirAuto || divDirAuto.closest('[role="textbox"]')) continue;
+          let messageData = null;
+          let cleanText = "";
+          let currentFiber = fiber;
 
-          const text = divDirAuto.textContent.trim();
-          if (!text) continue;
-
-          const rect = divDirAuto.getBoundingClientRect();
-          const isMe = rect.left > (window.innerWidth / 2);
-
-          let sender = isMe ? (myName || 'Me') : '';
-          let senderId = isMe ? (_myId || '') : '';
-
-          if (!isMe) {
-            const imgs = row.querySelectorAll('img');
-            for (const img of imgs) {
-              const w = img.width, h = img.height;
-              if (w >= 24 && w <= 40 && h >= 24 && h <= 40) {
-                const alt = img.getAttribute('alt') || '';
-                const src = img.src || '';
-                if (alt && alt.length > 1 && alt.length < 50
-                    && !alt.includes('Seen')
-                    && !alt.includes('Icon')
-                    && !src.includes('emoji.php')) {
-                  sender = alt;
-                  // Extract user ID from avatar parent link
-                  const parentLink = img.closest('a');
-                  if (parentLink) {
-                    const href = parentLink.getAttribute('href') || '';
-                    const idMatch = href.match(/\/(?:user|t)\/(\d+)/) ||
-                                    href.match(/profile\.php\?id=(\d+)/) ||
-                                    href.match(/\/(\d{6,})/);
-                    if (idMatch) senderId = idMatch[1];
-                  }
-                  break;
-                }
-              }
+          for (let i = 0; i < 25; i++) {
+            if (!currentFiber) break;
+            const props = currentFiber.memoizedProps;
+            if (props && props.message) { messageData = props.message; break; }
+            if (props && props.text && typeof props.text === 'string' && !props.message) {
+              if (props.text.length < 500 && !props.text.includes('##')) cleanText = props.text;
             }
-            if (!sender && lastSender) {
-              sender = lastSender;
-              senderId = lastSenderId;
-            }
-            if (!sender) sender = threadName || 'User';
-            // DM fallback: senderId = threadId
-            if (!senderId && _threadId) senderId = _threadId;
+            currentFiber = currentFiber.return;
           }
 
-          if (!isMe && sender) {
-            lastSender = sender;
-            lastSenderId = senderId;
-          } else if (isMe) {
-            lastSender = '';
-            lastSenderId = '';
-          }
+          if (messageData) {
+                let rawTime = messageData.timestampMs || messageData.timestamp;
+                let timestamp = Number(decodeBigInt(rawTime));
+                if (!timestamp || isNaN(timestamp)) timestamp = Date.now();
 
-          messages.push({ text, sender, senderId, isMe });
-        }
-        return messages;
-      }, count, config.myName, fallbackName, myId, threadId);
+                const senderId = decodeBigInt(messageData.senderId) || 'Unknown';
+                let senderName = messageData.senderName || 'User';
+
+                let isMe = messageData.isOutgoing === true || messageData.outgoing === true;
+                if (_myId && senderId === _myId) isMe = true;
+                if (isMe) senderName = 'Me';
+
+                // FIX: Ép kiểu messageId ra string ngay ở đây để chống lỗi Array === Array
+                let midRaw = messageData.messageId;
+                let finalMid = midRaw;
+                if (Array.isArray(midRaw)) finalMid = midRaw.join('_');
+                else if (midRaw) finalMid = String(midRaw);
+
+                results.push({
+                    messageId: finalMid, // Đã convert thành dạng "12345_6789"
+                    text: messageData.body || cleanText || "Media/Sticker",
+                    timestamp: timestamp,
+                    senderId: senderId,
+                    sender: senderName,
+                    isMe: isMe
+                });
+            }
+        });
+        return results;
+      }, count, myId);
     } catch (err) {
-      console.log('[Messenger] Loi doc tin:', err.message);
+      console.log('[Messenger] Loi doc tin Fiber:', err.message);
       return [];
     }
+  }
+
+  // Sửa lại Hash: Dùng MessageID của server, đảm bảo Spam 10 lần chữ /work vẫn nhận diện được
+  generateMsgHash(msg) {
+    return msg.messageId || `${msg.senderId}_${msg.timestamp}`;
   }
 
   // Dump DOM structure cua messages (de debug)
@@ -395,12 +388,7 @@ class Messenger {
   sleep(ms) {
     return new Promise(r => setTimeout(r, ms + Math.random() * 50));
   }
-  generateMsgHash(msg) {
-    // Kết hợp ID người gửi + Nội dung để tránh trùng lặp
-    // Nếu có senderId (từ React Fiber) thì dùng, không thì dùng tên
-    const id = msg.senderId || msg.sender; 
-    return `${id}_${msg.text}`.trim();
-  }
+
 
   // Đánh dấu 1 tin nhắn là "Đã xử lý" (Gọi hàm này sau khi bot reply xong)
   markAsProcessed(threadId, msg) {

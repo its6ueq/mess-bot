@@ -1,159 +1,125 @@
-require('dotenv').config();
-const { launchBrowser } = require('./src/browser');
+const puppeteer = require('puppeteer-core');
 
-const GROUP_URL = 'https://www.messenger.com/t/1191021623016238';
+const BROWSER_PATH = 'C:/Program Files/BraveSoftware/Brave-Browser/Application/brave.exe';
+const USER_DATA_DIR = 'D:\\Work\\Messenger-bot\\bot-profile';
 
-async function startBot() {
-  const { browser, page } = await launchBrowser();
+async function run() {
+  console.log('Khoi dong browser...');
+  const browser = await puppeteer.launch({
+    executablePath: BROWSER_PATH,
+    userDataDir: USER_DATA_DIR,
+    headless: false,
+    args: ['--no-sandbox', '--disable-notifications']
+  });
 
-  console.log('[Bot] Đang khởi động...');
-  await page.goto(GROUP_URL, { waitUntil: 'networkidle2', timeout: 60000 });
-  
-  // Chờ load tin nhắn và ổn định DOM
+  const page = await browser.newPage();
+  await page.goto('https://www.messenger.com', { waitUntil: 'networkidle2', timeout: 60000 });
   await new Promise(r => setTimeout(r, 5000));
 
-  console.log('\n' + '='.repeat(60));
-  console.log('  MESSENGER BOT IS LIVE (Đang lắng nghe tin nhắn mới)');
-  console.log('='.repeat(60));
+  console.log('\n=== SIDEBAR SCAN ===\n');
 
-  let lastProcessedId = null;
+  // 1. Dump tat ca link chat trong sidebar
+  const sidebarData = await page.evaluate(() => {
+    const results = [];
 
-  while (true) {
-    try {
-      const latestMsg = await page.evaluate(() => {
-        // --- HELPER: Giải mã ID từ mảng [High, Low] ---
-        function decodeId(raw) {
-            if (!raw) return null;
-            if (typeof raw === 'string') return raw;
-            if (Array.isArray(raw) && raw.length === 2) {
-                try {
-                    const high = BigInt(raw[0]);
-                    const low = BigInt(raw[1]);
-                    return ((high << 32n) + low).toString();
-                } catch (e) { return null; }
-            }
-            return null;
-        }
+    // Quet tat ca link co /t/ (giong scanUnreads)
+    const navLinks = document.querySelectorAll('div[role="navigation"] a[href*="/t/"]');
+    const mainLinks = document.querySelectorAll('[role="main"] a[href*="/t/"]');
+    const allLinks = [...navLinks, ...mainLinks];
 
-        const rows = document.querySelectorAll('[role="row"]');
-        if (rows.length === 0) return null;
-        
-        const lastRow = rows[rows.length - 1];
-        const textDiv = lastRow.querySelector('div[dir="auto"]');
-        if (!textDiv) return null;
+    // Quet them cac link co /g/ (group URL khac)
+    const gLinks = document.querySelectorAll('a[href*="/g/"]');
 
-        const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
-        let fiber = textDiv[key];
+    const seen = new Set();
 
-        let data = { text: "", senderId: null, isMe: false, messageId: null, timestamp: null, replyTo: null };
+    for (const link of [...allLinks, ...gLinks]) {
+      const href = link.getAttribute('href') || '';
+      if (seen.has(href)) continue;
+      seen.add(href);
 
-        // --- X-RAY: Leo lên tìm dữ liệu sạch từ React Fiber ---
-        for (let i = 0; i < 20; i++) {
-          if (!fiber) break;
-          const props = fiber.memoizedProps;
+      const info = {
+        href: href,
+        matchT: href.match(/(?:\/e2ee)?\/t\/(\d+)/),
+        matchG: href.match(/\/g\/(\d+)/),
+        innerText: (link.innerText || '').substring(0, 100).replace(/\n/g, ' | '),
+        ariaLabel: link.getAttribute('aria-label') || '',
+        spans: [],
+        hasUnread: false,
+        unreadReason: [],
+      };
 
-          // Cấp độ thấp: Lấy Text sạch (Tránh lỗi ##)
-          if (props && props.text && typeof props.text === 'string' && !props.message) {
-            if (!props.text.includes('##')) data.text = props.text;
-          }
+      // Check bold text (unread indicator)
+      const spans = Array.from(link.querySelectorAll('span'));
+      for (const span of spans) {
+        const text = span.innerText.trim();
+        if (!text) continue;
+        const style = window.getComputedStyle(span);
+        const fw = parseInt(style.fontWeight);
 
-          // Cấp độ cao: Lấy Object Message chính
-          if (props && props.message) {
-            const m = props.message;
-            data.messageId = m.messageId;
-            data.isMe = m.isOutgoing === true || m.outgoing === true;
-            data.senderId = decodeId(m.senderId);
-            data.timestamp = decodeId(m.timestampMs);
-            
-            // Kiểm tra xem có đang reply tin nào không
-            if (m.repliedToMessage) {
-                data.replyTo = {
-                    mid: m.repliedToMessage.messageId,
-                    text: m.repliedToMessage.text,
-                    senderId: decodeId(m.repliedToMessage.senderId)
-                };
-            }
-            break;
-          }
-          fiber = fiber.return;
-        }
-        return data;
-      });
+        info.spans.push({
+          text: text.substring(0, 50),
+          fontWeight: fw,
+          isBold: fw >= 600
+        });
 
-      // --- LOGIC XỬ LÝ TIN NHẮN ---
-      if (latestMsg && latestMsg.messageId && latestMsg.messageId !== lastProcessedId) {
-        lastProcessedId = latestMsg.messageId;
-
-        // CHỈ XỬ LÝ NẾU LÀ TIN NHẮN TỪ NGƯỜI KHÁC (isMe === false)
-        if (!latestMsg.isMe) {
-          console.log(`\n[${new Date().toLocaleTimeString()}] Tin mới từ: ${latestMsg.senderId}`);
-          console.log(` > Nội dung: "${latestMsg.text}"`);
-          if (latestMsg.replyTo) {
-             console.log(` > Trả lời tin: "${latestMsg.replyTo.text}" của ${latestMsg.replyTo.senderId}`);
-          }
-
-          // XỬ LÝ CÁC LỆNH (Ví dụ: /ping, /id)
-          const command = latestMsg.text.toLowerCase().trim();
-          
-          if (command === '/ping') {
-            await reply(page, latestMsg.messageId, "Pong! 🏓 Bot đang chạy rất mượt.");
-          } 
-          else if (command === '/id') {
-            await reply(page, latestMsg.messageId, `ID của bạn là: ${latestMsg.senderId}`);
-          }
+        if (fw >= 600 || style.fontWeight === 'bold') {
+          info.hasUnread = true;
+          info.unreadReason.push(`bold(fw=${fw}): "${text.substring(0, 30)}"`);
         }
       }
-    } catch (e) {
-      console.error('[Error Loop]:', e.message);
+
+      // Check "tin nhan chua doc" text
+      const fullText = link.innerText || '';
+      if (fullText.toLowerCase().includes('tin nhắn chưa đọc') || fullText.toLowerCase().includes('unread')) {
+        info.hasUnread = true;
+        info.unreadReason.push('text-match');
+      }
+
+      results.push(info);
     }
-    
-    // Nghỉ 1 giây giữa các lần quét để tránh lag trình duyệt
-    await new Promise(r => setTimeout(r, 1000));
+
+    return results;
+  });
+
+  console.log(`Tim thay ${sidebarData.length} link chat:\n`);
+
+  for (const item of sidebarData) {
+    const threadId = item.matchT ? item.matchT[1] : (item.matchG ? `g/${item.matchG[1]}` : 'UNKNOWN');
+    const status = item.hasUnread ? 'UNREAD' : 'read';
+
+    console.log(`[${status}] ${threadId}`);
+    console.log(`  href: ${item.href}`);
+    console.log(`  text: ${item.innerText.substring(0, 80)}`);
+    if (item.ariaLabel) console.log(`  aria: ${item.ariaLabel.substring(0, 80)}`);
+    if (item.unreadReason.length) console.log(`  reason: ${item.unreadReason.join(', ')}`);
+    for (const s of item.spans.slice(0, 4)) {
+      console.log(`  span: "${s.text}" fw=${s.fontWeight} ${s.isBold ? 'BOLD' : ''}`);
+    }
+    console.log('');
   }
+
+  // 2. Dump raw HTML cua 1 link co unread (neu co)
+  const unreadItem = sidebarData.find(x => x.hasUnread);
+  if (unreadItem) {
+    console.log('\n=== RAW HTML (first unread link) ===');
+    const rawHtml = await page.evaluate((href) => {
+      const link = document.querySelector(`a[href="${href}"]`);
+      return link ? link.outerHTML.substring(0, 2000) : 'NOT FOUND';
+    }, unreadItem.href);
+    console.log(rawHtml);
+  }
+
+  // 3. Check: co link nao dung /g/ khong?
+  const gCount = sidebarData.filter(x => x.matchG).length;
+  const tCount = sidebarData.filter(x => x.matchT).length;
+  console.log(`\n=== SUMMARY ===`);
+  console.log(`/t/ links: ${tCount}`);
+  console.log(`/g/ links: ${gCount}`);
+  console.log(`Unread: ${sidebarData.filter(x => x.hasUnread).length}`);
+  console.log(`Total: ${sidebarData.length}`);
+
+  await new Promise(r => setTimeout(r, 3000));
+  await browser.close();
 }
 
-/**
- * Hàm thực hiện Reply một tin nhắn cụ thể bằng Message ID
- */
-async function reply(page, targetMid, content) {
-    try {
-        const rowHandle = await page.evaluateHandle((mid) => {
-            const allRows = document.querySelectorAll('[role="row"]');
-            for (const row of allRows) {
-                const textDiv = row.querySelector('div[dir="auto"]');
-                if (!textDiv) continue;
-                const key = Object.keys(textDiv).find(k => k.startsWith('__reactFiber'));
-                let fiber = textDiv[key];
-                for(let i=0; i<20; i++) {
-                    if(!fiber) break;
-                    if(fiber.memoizedProps?.message?.messageId === mid) return row;
-                    fiber = fiber.return;
-                }
-            }
-            return null;
-        }, targetMid);
-
-        if (rowHandle.asElement()) {
-            // Hover để hiện nút reply
-            const bubble = await rowHandle.$('div[dir="auto"]');
-            await (bubble || rowHandle).hover();
-            await new Promise(r => setTimeout(r, 500));
-
-            // Tìm và click nút Reply
-            const replyBtn = await rowHandle.$('[aria-label="Trả lời"], [aria-label="Reply"]');
-            if (replyBtn) {
-                await replyBtn.click();
-                await new Promise(r => setTimeout(r, 800));
-                
-                // Gõ nội dung và gửi
-                await page.keyboard.type(content);
-                await page.keyboard.press('Enter');
-                console.log(` >>> Đã phản hồi: "${content}"`);
-            }
-        }
-    } catch (err) {
-        console.error(' [Reply Error]:', err.message);
-    }
-}
-
-startBot().catch(console.error);
+run().catch(console.error);

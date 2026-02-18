@@ -126,6 +126,87 @@ const adminCmds = {
 // === USER COMMANDS (game + economy + misc) ===
 const userCmds = {
   help: (args, ctx) => {
+    const topic = (args || '').trim().toLowerCase();
+
+    // /help <game> - chi tiet tung game
+    const gameHelp = {
+      xoso: '🎰 XO SO (LOTTERY)\n\n' +
+        'Choi nhieu nguoi, 1 nguoi thang!\n\n' +
+        'CACH CHOI:\n' +
+        '1. /xoso <xu> - Bat dau xo so (hoac tham gia)\n' +
+        '2. Nguoi khac go /xoso <xu> de tham gia\n' +
+        '3. Tu dong ket thuc sau 60 giay\n' +
+        '4. /xoso end - Nguoi bat dau ket thuc som\n\n' +
+        'LUAT:\n' +
+        '- Cuoc toi thieu: 10 xu\n' +
+        '- Can it nhat 2 nguoi choi\n' +
+        '- Nha cai lay 2% tien\n' +
+        '- 1 nguoi ngau nhien thang toan bo pot\n\n' +
+        'VD: /xoso 500 (dat 500 xu)',
+      xs: null, // redirect
+      wordle: '📝 WORDLE\n\n' +
+        '/wordle - Bat dau game\n' +
+        'Doan tu tieng Anh 5 chu cai trong 6 luot.\n' +
+        '🟩 = Dung vi tri | 🟨 = Sai vi tri | ⬛ = Khong co',
+      blackjack: '🃏 BLACKJACK (Xi Dach)\n\n' +
+        '/blackjack [xu] - Bat dau (mac dinh 50 xu)\n' +
+        'Go "hit" de rut bai, "stand" de dung.\n' +
+        'Gan 21 diem nhat thang!',
+      bj: null,
+      taixiu: '🎲 TAI XIU\n\n' +
+        '/taixiu <t/x> [xu] - Dat cuoc\n' +
+        't = tai (11-18), x = xiu (3-10)\n' +
+        'VD: /taixiu t 200',
+      tx: null,
+      baucua: '🦀 BAU CUA\n\n' +
+        '/baucua <con> [xu] - Dat cuoc\n' +
+        'Con: bau/cua/tom/ca/ga/nai\n' +
+        'VD: /baucua cua 100',
+      bc: null,
+      slots: '🎰 MAY QUAY\n\n' +
+        '/slots [xu] - Quay (mac dinh 50 xu)\n' +
+        '3 hinh giong nhau = thang lon!',
+      rps: '✊ OAN TU TI\n\n' +
+        '/rps <k/b/bao> [xu] - Choi\n' +
+        'k = keo, b = bua, bao = bao\n' +
+        'VD: /rps k 100',
+      duel: '⚔️ DUEL (Thach dau)\n\n' +
+        '/duel @ten <xu> - Thach dau\n' +
+        'Doi thu go /accept de chap nhan\n' +
+        '/decline - Tu choi thach dau\n\n' +
+        'LUAT:\n' +
+        '- Moi nguoi duoc chia 1 la bai\n' +
+        '- Ai lon hon thang\n' +
+        '- Nha cai lay 2%\n' +
+        '- Tu dong huy sau 60s neu doi thu khong chap nhan',
+      coinflip: '🪙 COINFLIP PvP\n\n' +
+        '/cf @ten <xu> - Thach coin flip\n' +
+        'Doi thu go /accept de chap nhan\n' +
+        '/decline - Tu choi\n\n' +
+        'LUAT:\n' +
+        '- 50/50 sap/ngua\n' +
+        '- Nha cai lay 2%\n' +
+        'VD: /cf @Nguyen Duy 200',
+      cf: null,
+      rob: '🔫 ROB (Cuop xu)\n\n' +
+        '/rob @ten - Cuop xu nguoi khac\n\n' +
+        'LUAT:\n' +
+        '- 40% thanh cong, cuop 10-30% xu doi phuong\n' +
+        '- 60% bi bat, mat 20-40% xu cua minh lam phat\n' +
+        '- Nan nhan duoc 50% tien phat boi thuong\n' +
+        '- Cooldown 5 phut\n' +
+        '- Can it nhat 50 xu de di cuop',
+      cuop: null,
+    };
+
+    // Redirect aliases
+    if (topic === 'xs') return gameHelp.xoso;
+    if (topic === 'bj') return gameHelp.blackjack;
+    if (topic === 'tx') return gameHelp.taixiu;
+    if (topic === 'bc') return gameHelp.baucua;
+    if (gameHelp[topic]) return gameHelp[topic];
+
+    // /help (tong quat)
     let msg = 'LENH BOT:\n\n';
     msg += '--- Chung ---\n';
     msg += '/help /ping /myid\n';
@@ -137,28 +218,48 @@ const userCmds = {
     msg += '/balance /deposit /withdraw\n';
     msg += '/transfer @ten <xu> /top\n\n';
     msg += '--- Cau Ca ---\n';
-    msg += '/fish [dia diem] - Cau ca\n';
-    msg += '/shop - Cua hang (can cau, thuyen)\n';
+    msg += '/fish [map] - Tha cau\n';
+    msg += '/shop - Mua can/moi\n';
     msg += '/buy <ten> - Mua do\n';
-    msg += '/sell [all] - Ban ca\n';
-    msg += '/inventory - Xem kho\n';
-    msg += '/gear - Trang bi\n';
-    msg += '/album - So suu tap\n\n';
+    msg += '/sell [all/id] - Ban ca\n';
+    msg += '/inventory - Xem kho ca\n';
+    msg += '/moi [id] - Dung moi\n';
+    msg += '/go <map> - Chuyen ho cau\n';
+    msg += '/album - Bo suu tap ca\n\n';
+
+    msg += '--- San Ban ---\n';
+    msg += '/hunt - Di san\n';
+    msg += '/trap [id] - Dat bay/Dung moi\n';
+    msg += '/hshop - Shop vu khi/bay\n';
+    msg += '/hbuy <ten> - Mua do san\n';
+    msg += '/hsell [all] - Ban chien loi pham\n';
+    msg += '/hkho - Xem kho san ban\n';
+    msg += '/hgear - Xem trang bi san\n';
+    msg += '/hgo <map> - Chuyen map san\n';
+    msg += '/halbum - Bo suu tap thu\n\n';
+
     msg += '--- Games ---\n';
     msg += '/wordle - Wordle\n';
     msg += '/blackjack [xu] - Xi dach\n';
     msg += '/taixiu <t/x> [xu] - Tai xiu\n';
     msg += '/baucua <con> [xu] - Bau cua\n';
     msg += '/slots [xu] - May quay\n';
-    msg += '/rps <k/b/bao> [xu] - Oan tu ti\n\n';
+    msg += '/rps <k/b/bao> [xu] - Oan tu ti\n';
+    msg += '/xoso [xu] - Xo so (nhieu nguoi)\n';
+    msg += '/duel @ten [xu] - Thach dau danh bai\n';
+    msg += '/cf @ten [xu] - Coinflip PvP\n';
+    msg += '/rob @ten - Cuop xu\n\n';
+
     msg += '--- Khac ---\n';
     msg += '/dice /flip /d20 /8ball <cau hoi>\n';
     msg += '/lucky /emoji /card\n';
     msg += '/td <truth/dare>\n';
-    msg += '/endgame - Ket thuc game\n';
+    msg += '/endgame - Ket thuc game\n\n';
+    msg += 'Go /help <ten game> de xem chi tiet.\n';
+    msg += 'VD: /help xoso, /help blackjack';
 
     if (isAdmin(ctx.senderId)) {
-      msg += '\n--- Admin ---\n';
+      msg += '\n\n--- Admin ---\n';
       msg += '/setrule /delrule /rules\n';
       msg += '/addadmin /removeadmin /admins\n';
       msg += '/say /status /shutdown\n';
@@ -237,15 +338,48 @@ const userCmds = {
   bj: (a, ctx) => userCmds.blackjack(a, ctx),
 
   // === INSTANT GAMES (dung senderId) ===
-  taixiu: (a, ctx) => G.taixiu.play({ player: ctx.senderId, economy: G.economy }, a || ''),
+  taixiu: (a, ctx) => {
+    if (a && a.includes('@')) {
+      const r = G.pvp.taixiuPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
+      if (r) return r;
+    }
+    return G.taixiu.play({ player: ctx.senderId, economy: G.economy }, a || '');
+  },
   tx: (a, ctx) => userCmds.taixiu(a, ctx),
-  baucua: (a, ctx) => G.baucua.play({ player: ctx.senderId, economy: G.economy }, a || ''),
+  baucua: (a, ctx) => {
+    if (a && a.includes('@')) {
+      const r = G.pvp.baucuaPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
+      if (r) return r;
+    }
+    return G.baucua.play({ player: ctx.senderId, economy: G.economy }, a || '');
+  },
   bc: (a, ctx) => userCmds.baucua(a, ctx),
-  slots: (a, ctx) => G.slots.play({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+  slots: (a, ctx) => {
+    if (a && a.includes('@')) {
+      const r = G.pvp.slotsPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
+      if (r) return r;
+    }
+    return G.slots.play({ player: ctx.senderId, economy: G.economy }, a?.trim());
+  },
   slot: (a, ctx) => userCmds.slots(a, ctx),
-  rps: (a, ctx) => G.rps.play({ player: ctx.senderId, economy: G.economy }, a || ''),
+  rps: (a, ctx) => {
+    if (a && a.includes('@')) {
+      const r = G.pvp.rpsPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
+      if (r) return r;
+    }
+    return G.rps.play({ player: ctx.senderId, economy: G.economy }, a || '');
+  },
+  xoso: (a, ctx) => G.lottery.start({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+  xs: (a, ctx) => userCmds.xoso(a, ctx),
+  duel: (a, ctx) => G.pvp.duel({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+  cf: (a, ctx) => G.pvp.coinflip({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+  coinflip: (a, ctx) => userCmds.cf(a, ctx),
+  rob: (a, ctx) => G.pvp.rob({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+  cuop: (a, ctx) => userCmds.rob(a, ctx),
+  accept: (a, ctx) => G.pvp.accept({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+  decline: (a, ctx) => G.pvp.decline({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }),
 
-  // === FISHING (dung senderId) ===
+// === FISHING (Update them lenh moi, go, map) ===
   fish: (a, ctx) => G.fishing.start({ player: ctx.senderId, economy: G.economy }, a?.trim() || ''),
   sell: (a, ctx) => G.fishing.sell({ player: ctx.senderId, economy: G.economy }, a?.trim() || ''),
   inventory: (a, ctx) => G.fishing.inventory({ player: ctx.senderId, economy: G.economy }),
@@ -254,6 +388,21 @@ const userCmds = {
   buy: (a, ctx) => G.fishing.buy({ player: ctx.senderId, economy: G.economy }, a?.trim() || ''),
   gear: (a, ctx) => G.fishing.gear({ player: ctx.senderId, economy: G.economy }),
   album: (a, ctx) => G.fishing.album({ player: ctx.senderId, economy: G.economy }),
+  moi: (a, ctx) => G.fishing.useBait({ player: ctx.senderId, economy: G.economy }, a),
+  go: (a, ctx) => G.fishing.goMap({ player: ctx.senderId, economy: G.economy }, a),
+  map: (a, ctx) => G.fishing.mapList({ player: ctx.senderId, economy: G.economy }),
+
+  // === HUNTING (Game moi) ===
+  hunt: (a, ctx) => G.hunting.hunt({ player: ctx.senderId, economy: G.economy }, a),
+  trap: (a, ctx) => G.hunting.setTrap({ player: ctx.senderId, economy: G.economy }, a),
+  hshop: (a, ctx) => G.hunting.huntShop({ player: ctx.senderId, economy: G.economy }),
+  hbuy: (a, ctx) => G.hunting.huntBuy({ player: ctx.senderId, economy: G.economy }, a),
+  hsell: (a, ctx) => G.hunting.huntSell({ player: ctx.senderId, economy: G.economy }, a),
+  hkho: (a, ctx) => G.hunting.huntInventory({ player: ctx.senderId, economy: G.economy }),
+  hgear: (a, ctx) => G.hunting.huntGear({ player: ctx.senderId, economy: G.economy }),
+  halbum: (a, ctx) => G.hunting.huntAlbum({ player: ctx.senderId, economy: G.economy }),
+  hgo: (a, ctx) => G.hunting.huntGoMap({ player: ctx.senderId, economy: G.economy }, a),
+  hmap: (a, ctx) => G.hunting.huntMapList({ player: ctx.senderId, economy: G.economy }),
 
   // === MISC GAMES ===
   dice: (a) => G.misc.dice(a),
