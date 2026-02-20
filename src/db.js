@@ -14,6 +14,9 @@ if (!fs.existsSync(DATA_DIR)) {
 // Cache du lieu trong RAM, chi doc file 1 lan
 const cache = {};
 
+// Pending writes: tránh ghi disk nhiều lần liên tiếp trong cùng 1 operation
+const pendingWrites = new Set();
+
 function getFilePath(collection) {
   return path.join(DATA_DIR, `${collection}.json`);
 }
@@ -31,11 +34,22 @@ function load(collection, fallback = {}) {
   return cache[collection];
 }
 
-// Ghi du lieu ra file
+// Ghi du lieu ra file (debounced: gộp nhiều lần gọi trong cùng 1 tick)
 function save(collection) {
-  const filePath = getFilePath(collection);
+  if (cache[collection] === undefined) return;
+  if (pendingWrites.has(collection)) return; // đã lên lịch, bỏ qua
+  pendingWrites.add(collection);
+  setImmediate(() => {
+    pendingWrites.delete(collection);
+    _writeSync(collection);
+  });
+}
+
+// Ghi trực tiếp (dùng cho shutdown / auto-save interval)
+function _writeSync(collection) {
   const data = cache[collection];
   if (data === undefined) return;
+  const filePath = getFilePath(collection);
   try {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
   } catch (err) {
@@ -78,11 +92,11 @@ function setAll(collection, data) {
   save(collection);
 }
 
-// Auto-save tat ca collections moi 30s
+// Auto-save tat ca collections moi 30s (force write)
 setInterval(() => {
   for (const collection of Object.keys(cache)) {
-    save(collection);
+    _writeSync(collection);
   }
 }, 30000);
 
-module.exports = { load, save, get, set, remove, getAll, setAll, DATA_DIR };
+module.exports = { load, save, _writeSync, get, set, remove, getAll, setAll, DATA_DIR };

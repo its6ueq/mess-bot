@@ -149,9 +149,12 @@ const userCmds = {
         'Doan tu tieng Anh 5 chu cai trong 6 luot.\n' +
         '🟩 = Dung vi tri | 🟨 = Sai vi tri | ⬛ = Khong co',
       blackjack: '🃏 BLACKJACK (Xi Dach)\n\n' +
-        '/blackjack [xu] - Bat dau (mac dinh 50 xu)\n' +
-        'Go "hit" de rut bai, "stand" de dung.\n' +
-        'Gan 21 diem nhat thang!',
+        '/blackjack [xu] - Bat dau (mac dinh 100 xu)\n\n' +
+        'Lenh trong game:\n' +
+        '"rut" / "r" - Rut them bai\n' +
+        '"dung" / "d" - Dung\n' +
+        '"double" - Tang gap doi cuoc (chi 2 la dau, tong 9/10/11)\n\n' +
+        'Bot tu dong goi y nuoc di theo basic strategy.',
       bj: null,
       taixiu: '🎲 TAI XIU\n\n' +
         '/taixiu <t/x> [xu] - Dat cuoc\n' +
@@ -217,26 +220,30 @@ const userCmds = {
     msg += '/daily /checkin /work /profile\n';
     msg += '/balance /deposit /withdraw\n';
     msg += '/transfer @ten <xu> /top\n\n';
-    msg += '--- Cau Ca ---\n';
-    msg += '/fish [map] - Tha cau\n';
-    msg += '/shop - Mua can/moi\n';
-    msg += '/buy <ten> - Mua do\n';
-    msg += '/sell [all/id] - Ban ca\n';
-    msg += '/inventory - Xem kho ca\n';
-    msg += '/moi [id] - Dung moi\n';
-    msg += '/go <map> - Chuyen ho cau\n';
-    msg += '/album - Bo suu tap ca\n\n';
 
-    msg += '--- San Ban ---\n';
-    msg += '/hunt - Di san\n';
-    msg += '/trap [id] - Dat bay/Dung moi\n';
-    msg += '/hshop - Shop vu khi/bay\n';
-    msg += '/hbuy <ten> - Mua do san\n';
-    msg += '/hsell [all] - Ban chien loi pham\n';
-    msg += '/hkho - Xem kho san ban\n';
-    msg += '/hgear - Xem trang bi san\n';
-    msg += '/hgo <map> - Chuyen map san\n';
-    msg += '/halbum - Bo suu tap thu\n\n';
+    msg += '--- San Thu (OwO) ---\n';
+    msg += '/hunt /h - Di san (RNG)\n';
+    msg += '/zoo [#] - Xem bo suu tap / chi tiet\n';
+    msg += '/team - Xem team 3 con\n';
+    msg += '/team set <1-3> <#uid> - Dat team\n';
+    msg += '/album - Bo suu tap thu\n';
+    msg += '/zsell <#uid|all> - Ban thu\n\n';
+
+    msg += '--- Battle ---\n';
+    msg += '/battle /b - Danh PvE\n';
+    msg += '/battle @ten - Danh PvP\n\n';
+
+    msg += '--- Trang bi ---\n';
+    msg += '/weapons - Xem vu khi\n';
+    msg += '/wequip <wpUid> <animalUid> - Lap vu khi\n';
+    msg += '/wremove <animalUid> - Go vu khi\n';
+    msg += '/gems - Xem ngoc\n';
+    msg += '/gemequip <gemId> <uid> <slot> - Lap ngoc\n';
+    msg += '/gemremove <uid> <slot> - Go ngoc\n\n';
+
+    msg += '--- Ruong ---\n';
+    msg += '/crates - Xem ruong\n';
+    msg += '/open [lbId] - Mo ruong\n\n';
 
     msg += '--- Games ---\n';
     msg += '/wordle - Wordle\n';
@@ -379,30 +386,33 @@ const userCmds = {
   accept: (a, ctx) => G.pvp.accept({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
   decline: (a, ctx) => G.pvp.decline({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }),
 
-// === FISHING (Update them lenh moi, go, map) ===
-  fish: (a, ctx) => G.fishing.start({ player: ctx.senderId, economy: G.economy }, a?.trim() || ''),
-  sell: (a, ctx) => G.fishing.sell({ player: ctx.senderId, economy: G.economy }, a?.trim() || ''),
-  inventory: (a, ctx) => G.fishing.inventory({ player: ctx.senderId, economy: G.economy }),
-  inv: (a, ctx) => userCmds.inventory(a, ctx),
-  shop: (a, ctx) => G.fishing.shop({ player: ctx.senderId, economy: G.economy }),
-  buy: (a, ctx) => G.fishing.buy({ player: ctx.senderId, economy: G.economy }, a?.trim() || ''),
-  gear: (a, ctx) => G.fishing.gear({ player: ctx.senderId, economy: G.economy }),
-  album: (a, ctx) => G.fishing.album({ player: ctx.senderId, economy: G.economy }),
-  moi: (a, ctx) => G.fishing.useBait({ player: ctx.senderId, economy: G.economy }, a),
-  go: (a, ctx) => G.fishing.goMap({ player: ctx.senderId, economy: G.economy }, a),
-  map: (a, ctx) => G.fishing.mapList({ player: ctx.senderId, economy: G.economy }),
+// === HUNT (OwO-style) ===
+  hunt: (a, ctx) => G.hunt.hunt({ player: ctx.senderId, economy: G.economy }),
+  h: (a, ctx) => userCmds.hunt(a, ctx),
+  album: (a, ctx) => G.hunt.huntAlbum({ player: ctx.senderId, economy: G.economy }),
 
-  // === HUNTING (Game moi) ===
-  hunt: (a, ctx) => G.hunting.hunt({ player: ctx.senderId, economy: G.economy }, a),
-  trap: (a, ctx) => G.hunting.setTrap({ player: ctx.senderId, economy: G.economy }, a),
-  hshop: (a, ctx) => G.hunting.huntShop({ player: ctx.senderId, economy: G.economy }),
-  hbuy: (a, ctx) => G.hunting.huntBuy({ player: ctx.senderId, economy: G.economy }, a),
-  hsell: (a, ctx) => G.hunting.huntSell({ player: ctx.senderId, economy: G.economy }, a),
-  hkho: (a, ctx) => G.hunting.huntInventory({ player: ctx.senderId, economy: G.economy }),
-  hgear: (a, ctx) => G.hunting.huntGear({ player: ctx.senderId, economy: G.economy }),
-  halbum: (a, ctx) => G.hunting.huntAlbum({ player: ctx.senderId, economy: G.economy }),
-  hgo: (a, ctx) => G.hunting.huntGoMap({ player: ctx.senderId, economy: G.economy }, a),
-  hmap: (a, ctx) => G.hunting.huntMapList({ player: ctx.senderId, economy: G.economy }),
+  // === ZOO & TEAM ===
+  zoo: (a, ctx) => G.zoo.zoo({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+  team: (a, ctx) => G.zoo.team({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+  zsell: (a, ctx) => G.zoo.zooSell({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+
+  // === WEAPONS ===
+  weapons: (a, ctx) => G.zoo.weapons({ player: ctx.senderId, economy: G.economy }),
+  wequip: (a, ctx) => G.zoo.weaponEquip({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+  wremove: (a, ctx) => G.zoo.weaponRemove({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+
+  // === GEMS ===
+  gems: (a, ctx) => G.gems.gems({ player: ctx.senderId, economy: G.economy }),
+  gemequip: (a, ctx) => G.gems.gemEquip({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+  gemremove: (a, ctx) => G.gems.gemRemove({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+
+  // === BATTLE ===
+  battle: (a, ctx) => G.battle.battle({ player: ctx.senderId, economy: G.economy, resolveTarget: (str) => { const t = resolveTarget(str); return t?.id; } }, a?.trim()),
+  b: (a, ctx) => userCmds.battle(a, ctx),
+
+  // === LOOTBOX ===
+  open: (a, ctx) => G.lootbox.open({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+  crates: (a, ctx) => G.lootbox.crates({ player: ctx.senderId, economy: G.economy }),
 
   // === MISC GAMES ===
   dice: (a) => G.misc.dice(a),

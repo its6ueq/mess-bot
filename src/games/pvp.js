@@ -636,8 +636,8 @@ function rob(ctx, args) {
   const robberName = economy.getDisplayName(player);
   const victimName = economy.getDisplayName(targetId);
 
-  if (Math.random() < 0.4) {
-    const percent = 0.1 + Math.random() * 0.2;
+  if (Math.random() < 0.3) {
+    const percent = 0.1 + Math.random() * 0.3;
     const stolen = Math.floor(targetBal.xu * percent);
     const amount = Math.max(stolen, 10);
     economy.removeXu(targetId, amount);

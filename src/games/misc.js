@@ -96,13 +96,14 @@ function cardBattle() {
   return msg;
 }
 
-// Điểm danh hàng ngày
+// Điểm danh hàng ngày (có chance rương)
 function checkin(economy, player) {
   const p = economy.getPlayer(player);
   const now = new Date();
 
   if (!p.checkinStreak) p.checkinStreak = 0;
   if (!p.lastCheckin) p.lastCheckin = null;
+  if (!p.lootBoxes) p.lootBoxes = {};
 
   if (p.lastCheckin) {
     const last = new Date(p.lastCheckin);
@@ -126,12 +127,24 @@ function checkin(economy, player) {
   p.xu += reward;
   p.totalEarned += reward;
   p.lastCheckin = now.toISOString();
-  economy._save();
 
   let msg = `📋 ĐIỂM DANH!\n`;
   msg += `🔥 Streak: ${p.checkinStreak} ngày liên tục\n`;
   msg += `+${base} xu (cơ bản) +${bonus} xu (streak)\n`;
   msg += `= +${reward} xu!\nVí: ${p.xu} xu`;
+
+  // 15% chance nhận rương
+  if (Math.random() < 0.15) {
+    const roll = Math.random();
+    let crateId = 'LB1';
+    if (roll < 0.05) crateId = 'LB3';
+    else if (roll < 0.30) crateId = 'LB2';
+    p.lootBoxes[crateId] = (p.lootBoxes[crateId] || 0) + 1;
+    const names = { LB1: '📦 Hộp Kho Báu', LB2: '📦 Hộp Hiếm', LB3: '📦 Hộp Sử Thi' };
+    msg += `\n\n🎁 BONUS: Nhận ${names[crateId]}! /open để mở`;
+  }
+
+  economy._save();
   return msg;
 }
 

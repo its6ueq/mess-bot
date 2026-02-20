@@ -23,11 +23,9 @@ function endGame(threadId) {
   sessions.delete(threadId);
 }
 
-// Import games (da xoa: guess, math, scramble)
+// Import games
 const blackjack = require('./blackjack');
 const wordle = require('./wordle');
-const fishing = require( './fishing' );
-const hunting = require('./hunting'); // <--- THÊM DÒNG NÀY
 const taixiu = require('./taixiu');
 const baucua = require('./baucua');
 const slots = require('./slots');
@@ -35,6 +33,13 @@ const rps = require('./rps');
 const lottery = require('./lottery');
 const pvp = require('./pvp');
 const misc = require('./misc');
+
+// NEW: OwO-style modules
+const hunt = require('./hunt/index');
+const zoo = require('./zoo/index');
+const battle = require('./battle/index');
+const gems = require('./gems/index');
+const lootbox = require('./lootbox/index');
 
 // Xu ly input khi dang choi game
 function handleGameInput(threadId, text, player) {
@@ -58,8 +63,6 @@ function handleGameInput(threadId, text, player) {
   switch (session.type) {
     case 'blackjack': return blackjack.handleInput(ctx, text);
     case 'wordle': return wordle.handleInput(ctx, text);
-    case 'fishing': return fishing.handleInput( ctx, text );
-    case 'hunting': return hunting.handleInput(ctx, text); // <--- THÊM DÒNG NÀY (nếu hunting có handleInput)
     default: return null;
   }
 }
@@ -72,6 +75,8 @@ module.exports = {
   setSession,
   endGame,
   handleGameInput,
-  blackjack, wordle, fishing, hunting,
+  blackjack, wordle,
   taixiu, baucua, slots, rps, lottery, pvp, misc,
+  // NEW
+  hunt, zoo, battle, gems, lootbox,
 };

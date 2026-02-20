@@ -2,463 +2,199 @@
   "100010201036867": {
     "id": "100010201036867",
     "displayName": "Nguyen Duc Truong Giang",
-    "xu": 6394,
+    "xu": 3516,
     "bank": 0,
-    "level": 8,
-    "exp": 792,
-    "totalEarned": 43894,
-    "totalSpent": 39500,
-    "fishCaught": 0,
-    "gamesPlayed": 30,
-    "gamesWon": 15,
-    "inventory": [],
-    "lastDaily": null,
-    "lastFish": null,
-    "lastWork": "2026-02-18T09:28:09.018Z",
+    "level": 25,
+    "exp": 2426,
+    "totalEarned": 382523,
+    "totalSpent": 381007,
+    "gamesPlayed": 181,
+    "gamesWon": 80,
+    "lastDaily": "2026-02-19T06:54:02.507Z",
+    "lastWork": "2026-02-19T12:50:13.695Z",
     "createdAt": "2026-02-17T15:37:51.960Z",
-    "checkinStreak": 0,
-    "lastCheckin": null,
-    "rod": "tre",
-    "boat": null,
-    "album": {},
-    "albumRewards": [],
-    "monstersKilled": 0
+    "checkinStreak": 2,
+    "lastCheckin": "2026-02-19T05:28:09.271Z",
+    "monstersKilled": 1,
+    "lastRob": "2026-02-19T12:49:58.663Z",
+    "huntWeapon": "dao",
+    "huntMaxTrapLv": 2,
+    "huntAlbumRewards": [],
+    "fishMap": "aolang",
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "100054767970643": {
     "id": "100054767970643",
     "displayName": "Nguyễn Duy",
-    "xu": 8376,
+    "xu": 628,
     "bank": 0,
-    "level": 2,
-    "exp": 79,
-    "totalEarned": 20743,
-    "totalSpent": 14241,
-    "fishCaught": 36,
-    "gamesPlayed": 6,
-    "gamesWon": 3,
-    "inventory": [
-      {
-        "id": 21,
-        "size": 3,
-        "price": 35
-      },
-      {
-        "id": 19,
-        "size": 3,
-        "price": 38
-      },
-      {
-        "id": 16,
-        "size": 3,
-        "price": 50
-      },
-      {
-        "id": 17,
-        "size": 3,
-        "price": 55
-      },
-      {
-        "id": 12,
-        "size": 2,
-        "price": 20
-      }
-    ],
-    "lastDaily": null,
-    "lastFish": "2026-02-18T09:38:38.196Z",
-    "lastWork": "2026-02-18T09:24:47.653Z",
+    "level": 10,
+    "exp": 956,
+    "totalEarned": 105682,
+    "totalSpent": 107081,
+    "gamesPlayed": 40,
+    "gamesWon": 12,
+    "lastDaily": "2026-02-18T17:04:51.289Z",
+    "lastWork": "2026-02-20T02:00:33.133Z",
     "createdAt": "2026-02-17T15:38:15.115Z",
-    "checkinStreak": 1,
-    "lastCheckin": "2026-02-18T09:11:29.602Z",
-    "bait": {
-      "id": 0,
-      "size": 1
-    },
-    "rod": "tre",
+    "checkinStreak": 2,
+    "lastCheckin": "2026-02-19T05:27:58.595Z",
     "maxBaitSize": 2,
-    "album": {
-      "2": 2,
-      "3": 1,
-      "4": 3,
-      "5": 1,
-      "6": 2,
-      "7": 1,
-      "12": 3,
-      "14": 1,
-      "16": 1,
-      "17": 1,
-      "19": 3,
-      "21": 2
-    },
-    "albumRewards": [],
     "fishMap": "aolang",
-    "huntTrap": {
-      "name": "🪤 Bẫy Chuột",
-      "level": 1
-    },
     "huntWeapon": "dao",
-    "huntMap": "rungtre",
-    "huntMaxTrapLv": 2,
-    "huntAlbum": {
-      "🐛 Sâu Bọ": {
-        "count": 1,
-        "level": 1
-      },
-      "🐺 Sói Xám": {
-        "count": 1,
-        "level": 2
-      },
-      "🦎 Thạch Sùng": {
-        "count": 1,
-        "level": 1
-      }
-    },
+    "huntMaxTrapLv": 3,
     "huntAlbumRewards": [],
-    "huntInventory": [
-      {
-        "id": 2,
-        "name": "🦎 Thạch Sùng",
-        "price": 5,
-        "level": 1
-      }
+    "monstersKilled": 18,
+    "lastRob": "2026-02-20T03:56:20.209Z",
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
     ],
-    "monstersKilled": 3,
-    "lastHunt": "2026-02-18T06:07:22.531Z",
-    "lastRob": "2026-02-18T15:54:29.865Z"
+    "zooNextId": 1,
+    "lootBoxes": {},
+    "weapons": [],
+    "weaponNextId": 1,
+    "gems": {},
+    "ownedGems": {},
+    "huntAlbum": {}
   },
   "100092277185369": {
     "id": "100092277185369",
     "displayName": "Bằng Hải",
-    "xu": 3127,
+    "xu": 2076,
     "bank": 0,
     "level": 2,
     "exp": 0,
-    "totalEarned": 1000,
-    "totalSpent": 0,
-    "fishCaught": 4,
+    "totalEarned": 1172,
+    "totalSpent": 1223,
     "gamesPlayed": 0,
     "gamesWon": 0,
-    "inventory": [
-      {
-        "id": 43,
-        "size": 7,
-        "price": 200
-      }
-    ],
     "lastDaily": null,
-    "lastFish": "2026-02-17T19:03:13.253Z",
-    "lastWork": null,
+    "lastWork": "2026-02-19T05:54:41.115Z",
     "createdAt": "2026-02-17T15:40:14.406Z",
     "checkinStreak": 0,
     "lastCheckin": null,
-    "huntTrap": {
-      "name": "🪤 Bẫy Chuột",
-      "level": 1
-    },
     "huntWeapon": "dao",
-    "huntMap": "rungtre",
     "huntMaxTrapLv": 1,
-    "huntAlbum": {},
     "huntAlbumRewards": [],
-    "huntInventory": [],
     "monstersKilled": 0,
-    "bait": {
-      "id": 0,
-      "size": 1
-    },
-    "rod": "tre",
     "fishMap": "aolang",
-    "album": {},
-    "albumRewards": []
+    "lastRob": "2026-02-19T05:51:31.510Z",
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "100080723012303": {
     "id": "100080723012303",
     "displayName": "L. T. Việt",
-    "xu": 1099,
+    "xu": 272,
     "bank": 0,
-    "level": 1,
-    "exp": 53,
-    "totalEarned": 1957,
-    "totalSpent": 2858,
-    "fishCaught": 1,
-    "gamesPlayed": 12,
-    "gamesWon": 5,
-    "inventory": [],
-    "lastDaily": null,
-    "lastFish": "2026-02-18T07:12:07.731Z",
-    "lastWork": "2026-02-18T09:40:48.559Z",
+    "level": 22,
+    "exp": 2061,
+    "totalEarned": 282137,
+    "totalSpent": 283865,
+    "gamesPlayed": 133,
+    "gamesWon": 59,
+    "lastDaily": "2026-02-19T06:54:27.151Z",
+    "lastWork": "2026-02-20T08:21:27.032Z",
     "createdAt": "2026-02-17T15:42:21.122Z",
-    "checkinStreak": 1,
-    "lastCheckin": "2026-02-18T06:32:21.671Z",
-    "rod": "tre",
-    "boat": null,
-    "album": {
-      "4": 1
-    },
-    "albumRewards": [],
-    "bait": {
-      "id": 0,
-      "size": 1
-    },
+    "checkinStreak": 2,
+    "lastCheckin": "2026-02-19T06:53:44.341Z",
     "fishMap": "aolang",
-    "huntTrap": null,
     "huntWeapon": "dao",
-    "huntMap": "rungtre",
-    "huntMaxTrapLv": 2,
-    "huntAlbum": {
-      "🐗 Lợn Rừng": {
-        "count": 1,
-        "level": 2
-      }
-    },
+    "huntMaxTrapLv": 3,
     "huntAlbumRewards": [],
-    "huntInventory": [
-      {
-        "id": 8,
-        "name": "🐗 Lợn Rừng",
-        "price": 18,
-        "level": 2
-      }
+    "monstersKilled": 24,
+    "lastRob": "2026-02-20T08:21:44.611Z",
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
     ],
-    "monstersKilled": 1,
-    "lastHunt": "2026-02-18T07:12:54.573Z"
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "100094031156752": {
     "id": "100094031156752",
     "displayName": "NH Bảo",
-    "xu": 30893,
-    "bank": 0,
-    "level": 9,
-    "exp": 396,
-    "totalEarned": 64658,
-    "totalSpent": 35765,
-    "fishCaught": 25,
-    "gamesPlayed": 42,
-    "gamesWon": 23,
-    "inventory": [
-      {
-        "id": 10,
-        "size": 2,
-        "price": 16
-      },
-      {
-        "id": 3,
-        "size": 1,
-        "price": 8
-      },
-      {
-        "id": 4,
-        "size": 1,
-        "price": 10
-      },
-      {
-        "id": 6,
-        "size": 1,
-        "price": 2
-      },
-      {
-        "id": 2,
-        "size": 1,
-        "price": 5
-      },
-      {
-        "id": 4,
-        "size": 1,
-        "price": 10
-      },
-      {
-        "id": 5,
-        "size": 1,
-        "price": 7
-      },
-      {
-        "id": 6,
-        "size": 1,
-        "price": 2
-      },
-      {
-        "id": 12,
-        "size": 2,
-        "price": 20
-      },
-      {
-        "id": 6,
-        "size": 1,
-        "price": 2
-      },
-      {
-        "id": 1,
-        "size": 1,
-        "price": 3
-      },
-      {
-        "id": 17,
-        "size": 3,
-        "price": 55
-      }
-    ],
-    "lastDaily": null,
-    "lastFish": "2026-02-18T09:05:44.283Z",
-    "lastWork": "2026-02-18T09:41:20.661Z",
+    "xu": 4548,
+    "bank": 36217,
+    "level": 29,
+    "exp": 1044,
+    "totalEarned": 521739,
+    "totalSpent": 482974,
+    "gamesPlayed": 257,
+    "gamesWon": 120,
+    "lastDaily": "2026-02-18T17:04:40.748Z",
+    "lastWork": "2026-02-20T08:17:20.050Z",
     "createdAt": "2026-02-17T15:43:13.060Z",
-    "checkinStreak": 1,
-    "lastCheckin": "2026-02-18T04:01:30.096Z",
-    "rod": "tre",
-    "boat": null,
-    "album": {
-      "1": 1,
-      "2": 4,
-      "3": 1,
-      "4": 2,
-      "5": 1,
-      "6": 4,
-      "9": 1,
-      "10": 4,
-      "11": 1,
-      "12": 2,
-      "13": 1,
-      "17": 1,
-      "20": 1
-    },
-    "albumRewards": [],
-    "bait": null,
+    "checkinStreak": 2,
+    "lastCheckin": "2026-02-18T17:04:30.068Z",
     "maxBaitSize": 2,
     "fishMap": "aolang",
-    "huntTrap": {
-      "name": "🪤 Bẫy Gấu",
-      "level": 3
-    },
     "huntWeapon": "dao",
-    "huntMap": "rungtre",
     "huntMaxTrapLv": 3,
-    "huntAlbum": {
-      "🦌 Nai Rừng": {
-        "count": 1,
-        "level": 2
-      },
-      "🐍 Rắn Mối": {
-        "count": 2,
-        "level": 1
-      },
-      "🦎 Thạch Sùng": {
-        "count": 2,
-        "level": 1
-      },
-      "🐺 Chó Hoang": {
-        "count": 3,
-        "level": 1
-      },
-      "🦅 Phượng Hoàng": {
-        "count": 2,
-        "level": 3
-      },
-      "🐀 Chuột Cống": {
-        "count": 2,
-        "level": 1
-      },
-      "🕷️ Nhện Độc": {
-        "count": 2,
-        "level": 1
-      },
-      "🦇 Dơi Nhỏ": {
-        "count": 2,
-        "level": 1
-      }
-    },
-    "huntAlbumRewards": [],
-    "huntInventory": [
+    "huntAlbumRewards": [
+      "level_1",
+      "level_2"
+    ],
+    "monstersKilled": 100,
+    "lastRob": "2026-02-19T12:53:09.663Z",
+    "zoo": [
       {
-        "id": 3,
-        "name": "🐍 Rắn Mối",
-        "price": 8,
-        "level": 1
-      },
-      {
-        "id": 2,
-        "name": "🦎 Thạch Sùng",
-        "price": 5,
-        "level": 1
-      },
-      {
-        "id": 2,
-        "name": "🦎 Thạch Sùng",
-        "price": 5,
-        "level": 1
-      },
-      {
-        "id": 5,
-        "name": "🐺 Chó Hoang",
-        "price": 12,
-        "level": 1
-      },
-      {
-        "id": 5,
-        "name": "🐺 Chó Hoang",
-        "price": 12,
-        "level": 1
-      },
-      {
-        "id": 19,
-        "name": "🦅 Phượng Hoàng",
-        "price": 55,
-        "level": 3
-      },
-      {
-        "id": 5,
-        "name": "🐺 Chó Hoang",
-        "price": 12,
-        "level": 1
-      },
-      {
-        "id": 1,
-        "name": "🐀 Chuột Cống",
-        "price": 3,
-        "level": 1
-      },
-      {
-        "id": 1,
-        "name": "🐀 Chuột Cống",
-        "price": 3,
-        "level": 1
-      },
-      {
-        "id": 6,
-        "name": "🕷️ Nhện Độc",
-        "price": 7,
-        "level": 1
-      },
-      {
-        "id": 4,
-        "name": "🦇 Dơi Nhỏ",
-        "price": 10,
-        "level": 1
-      },
-      {
-        "id": 6,
-        "name": "🕷️ Nhện Độc",
-        "price": 7,
-        "level": 1
-      },
-      {
-        "id": 4,
-        "name": "🦇 Dơi Nhỏ",
-        "price": 10,
-        "level": 1
-      },
-      {
-        "id": 3,
-        "name": "🐍 Rắn Mối",
-        "price": 8,
-        "level": 1
-      },
-      {
-        "id": 19,
-        "name": "🦅 Phượng Hoàng",
-        "price": 55,
-        "level": 3
+        "uid": 1,
+        "animalId": "MT4",
+        "level": 1,
+        "exp": 0,
+        "weaponUid": null,
+        "gems": [
+          null,
+          null,
+          null
+        ]
       }
     ],
-    "monstersKilled": 16,
-    "lastHunt": "2026-02-18T09:06:24.767Z"
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 2,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {
+      "MT4": 1
+    },
+    "lastHunt": "2026-02-20T08:17:16.805Z"
   },
   "100027542017332": {
     "id": "100027542017332",
@@ -469,41 +205,60 @@
     "exp": 0,
     "totalEarned": 0,
     "totalSpent": 0,
-    "fishCaught": 0,
     "gamesPlayed": 0,
     "gamesWon": 0,
-    "inventory": [],
     "lastDaily": null,
-    "lastFish": null,
     "lastWork": null,
     "createdAt": "2026-02-17T15:44:37.376Z",
     "checkinStreak": 0,
-    "lastCheckin": null
+    "lastCheckin": null,
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "100093502091295": {
     "id": "100093502091295",
     "displayName": "Phạm Đức",
-    "xu": 2420,
+    "xu": 2108,
     "bank": 0,
-    "level": 1,
-    "exp": 0,
-    "totalEarned": 420,
-    "totalSpent": 0,
-    "fishCaught": 0,
-    "gamesPlayed": 0,
-    "gamesWon": 0,
-    "inventory": [],
+    "level": 19,
+    "exp": 950,
+    "totalEarned": 187191,
+    "totalSpent": 187083,
+    "gamesPlayed": 51,
+    "gamesWon": 26,
     "lastDaily": null,
-    "lastFish": null,
-    "lastWork": "2026-02-18T08:55:23.763Z",
+    "lastWork": "2026-02-20T08:34:28.642Z",
     "createdAt": "2026-02-17T16:00:45.250Z",
     "checkinStreak": 1,
     "lastCheckin": "2026-02-18T06:46:53.534Z",
-    "rod": "tre",
-    "boat": null,
-    "album": {},
-    "albumRewards": [],
-    "monstersKilled": 0
+    "monstersKilled": 6,
+    "fishMap": "aolang",
+    "huntWeapon": "dao",
+    "huntMaxTrapLv": 3,
+    "huntAlbumRewards": [],
+    "lastRob": "2026-02-20T08:34:39.624Z",
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "1151753583565055": {
     "id": "1151753583565055",
@@ -514,46 +269,55 @@
     "exp": 0,
     "totalEarned": 0,
     "totalSpent": 0,
-    "fishCaught": 1,
     "gamesPlayed": 0,
     "gamesWon": 0,
-    "inventory": [
-      {
-        "name": "🦐 Tom",
-        "price": 40,
-        "rarity": "common"
-      }
-    ],
     "lastDaily": null,
-    "lastFish": "2026-02-17T16:08:00.600Z",
     "lastWork": null,
     "createdAt": "2026-02-17T16:07:27.994Z",
     "checkinStreak": 0,
-    "lastCheckin": null
+    "lastCheckin": null,
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "100017738857244": {
     "id": "100017738857244",
     "displayName": "100017738857244",
-    "xu": 1960,
+    "xu": 2160,
     "bank": 0,
     "level": 2,
-    "exp": 60,
-    "totalEarned": 1760,
+    "exp": 80,
+    "totalEarned": 1960,
     "totalSpent": 800,
-    "fishCaught": 0,
-    "gamesPlayed": 1,
-    "gamesWon": 1,
-    "inventory": [],
+    "gamesPlayed": 2,
+    "gamesWon": 2,
     "lastDaily": null,
-    "lastFish": null,
     "lastWork": "2026-02-18T09:37:00.618Z",
     "createdAt": "2026-02-18T09:30:40.919Z",
     "checkinStreak": 0,
     "lastCheckin": null,
-    "rod": "tre",
-    "boat": null,
-    "album": {},
-    "albumRewards": []
+    "fishMap": "aolang",
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "100023761989286": {
     "id": "100023761989286",
@@ -564,20 +328,25 @@
     "exp": 0,
     "totalEarned": 996,
     "totalSpent": 100,
-    "fishCaught": 0,
     "gamesPlayed": 0,
     "gamesWon": 0,
-    "inventory": [],
     "lastDaily": "2026-02-18T09:39:18.131Z",
-    "lastFish": null,
     "lastWork": "2026-02-18T09:36:57.080Z",
     "createdAt": "2026-02-18T09:36:57.078Z",
     "checkinStreak": 0,
     "lastCheckin": null,
-    "rod": "tre",
-    "boat": null,
-    "album": {},
-    "albumRewards": []
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
   },
   "23295_3504810323": {
     "id": "23295_3504810323",
@@ -588,53 +357,60 @@
     "exp": 0,
     "totalEarned": 0,
     "totalSpent": 0,
-    "fishCaught": 1,
     "gamesPlayed": 0,
     "gamesWon": 0,
-    "inventory": [
-      {
-        "id": 9,
-        "size": 2,
-        "price": 22
-      }
-    ],
     "lastDaily": null,
-    "lastFish": "2026-02-18T15:09:59.675Z",
     "lastWork": null,
     "createdAt": "2026-02-18T15:09:59.672Z",
     "checkinStreak": 0,
     "lastCheckin": null,
-    "rod": "tre",
-    "boat": null,
-    "album": {
-      "9": 1
-    },
-    "albumRewards": [],
-    "bait": {
-      "id": 0,
-      "size": 1
-    },
     "fishMap": "aolang",
-    "huntTrap": null,
     "huntWeapon": "dao",
-    "huntMap": "rungtre",
     "huntMaxTrapLv": 1,
-    "huntAlbum": {
-      "🐺 Chó Hoang": {
-        "count": 1,
-        "level": 1
-      }
-    },
     "huntAlbumRewards": [],
-    "huntInventory": [
-      {
-        "id": 5,
-        "name": "🐺 Chó Hoang",
-        "price": 12,
-        "level": 1
-      }
-    ],
     "monstersKilled": 1,
-    "lastHunt": "2026-02-18T15:10:22.662Z"
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "weapons": [],
+    "weaponNextId": 1,
+    "ownedGems": {},
+    "lootBoxes": {},
+    "huntAlbum": {}
+  },
+  "test123": {
+    "id": "test123",
+    "displayName": "test123",
+    "xu": 995,
+    "bank": 0,
+    "level": 1,
+    "exp": 0,
+    "totalEarned": 0,
+    "totalSpent": 5,
+    "gamesPlayed": 0,
+    "gamesWon": 0,
+    "lastDaily": null,
+    "lastWork": null,
+    "createdAt": "2026-02-20T06:44:06.241Z",
+    "checkinStreak": 0,
+    "lastCheckin": null,
+    "zoo": [],
+    "team": [
+      null,
+      null,
+      null
+    ],
+    "zooNextId": 1,
+    "monstersKilled": 1,
+    "lootBoxes": {},
+    "weapons": [],
+    "weaponNextId": 1,
+    "gems": {},
+    "ownedGems": {},
+    "huntAlbum": {}
   }
 }
