@@ -258,6 +258,86 @@ class Economy {
     }
   }
 
+  getTotalBank() {
+    return Object.values(this.players).reduce((sum, p) => sum + (p.bank || 0), 0);
+  }
+
+  // Trừ tiền bank của các người chơi khác theo tỉ lệ
+  _deductFromBanks(robberId, amount) {
+    const eligible = Object.entries(this.players)
+      .filter(([id, p]) => id !== robberId && p.bank > 0);
+    const poolTotal = eligible.reduce((s, [, p]) => s + p.bank, 0);
+    if (poolTotal === 0 || amount <= 0) return;
+
+    let deducted = 0;
+    for (const [, p] of eligible) {
+      const share = Math.min(p.bank, Math.floor((p.bank / poolTotal) * amount));
+      p.bank -= share;
+      deducted += share;
+    }
+    // Bù phần lẻ vào người có bank nhiều nhất
+    const diff = amount - deducted;
+    if (diff > 0) {
+      const richest = eligible.sort((a, b) => b[1].bank - a[1].bank)[0];
+      if (richest) richest[1].bank = Math.max(0, richest[1].bank - diff);
+    }
+  }
+
+  robBank(id) {
+    const p = this.getPlayer(id);
+    const now = Date.now();
+    const COOLDOWN_NORMAL  = 1 * 60 * 60 * 1000; // 1 tiếng
+    const COOLDOWN_JACKPOT = 3 * 60 * 60 * 1000; // 3 tiếng (gấp 3)
+
+    if (p.robBankCooldownUntil && now < p.robBankCooldownUntil) {
+      const remaining = Math.ceil((p.robBankCooldownUntil - now) / 60000);
+      const h = Math.floor(remaining / 60);
+      const m = remaining % 60;
+      return { ok: false, msg: `Còn ${h > 0 ? h + ' tiếng ' : ''}${m} phút nữa mới cướp được!` };
+    }
+
+    const eligible = Object.entries(this.players)
+      .filter(([pid, ep]) => pid !== id && ep.bank > 0);
+    const poolTotal = eligible.reduce((s, [, ep]) => s + ep.bank, 0);
+
+    if (poolTotal < 100)
+      return { ok: false, msg: 'Ngân hàng đang trống, không có gì để cướp!' };
+
+    const roll = Math.random();
+
+    // Jackpot: 1% cơ hội, cuỗm 40-70% — cooldown 24h
+    if (roll < 0.01) {
+      const pct = 0.40 + Math.random() * 0.30;
+      const stolen = Math.floor(poolTotal * pct);
+      this._deductFromBanks(id, stolen);
+      p.xu += stolen;
+      p.totalEarned += stolen;
+      p.robBankCooldownUntil = now + COOLDOWN_JACKPOT;
+      this._save();
+      return { ok: true, jackpot: true, stolen, pct: Math.round(pct * 100), poolTotal };
+    }
+
+    // Thành công thường: 30% cơ hội, cuỗm 1% — cooldown 1h
+    if (roll < 0.31) {
+      const stolen = Math.floor(poolTotal * 0.01);
+      this._deductFromBanks(id, stolen);
+      p.xu += stolen;
+      p.totalEarned += stolen;
+      p.robBankCooldownUntil = now + COOLDOWN_NORMAL;
+      this._save();
+      return { ok: true, jackpot: false, stolen, poolTotal };
+    }
+
+    // Thất bại: phạt 10-30% xu, tối thiểu 100 — cooldown 8h
+    const finePct = 0.10 + Math.random() * 0.20;
+    const fine = Math.max(100, Math.floor(p.xu * finePct));
+    p.xu = Math.max(0, p.xu - fine);
+    p.totalSpent += fine;
+    p.robBankCooldownUntil = now + COOLDOWN_NORMAL;
+    this._save();
+    return { ok: false, caught: true, fine, pct: Math.round(finePct * 100), xu: p.xu };
+  }
+
   recordGame(id, won) {
     const p = this.getPlayer(id);
     p.gamesPlayed++;

@@ -217,7 +217,7 @@ const userCmds = {
     msg += '/code <mo ta> - AI viet code\n';
     msg += '/tts <text> - Text-to-Speech\n\n';
     msg += '--- Economy ---\n';
-    msg += '/daily /checkin /work /profile\n';
+    msg += '/daily /checkin /work /robbank /profile\n';
     msg += '/balance /deposit /withdraw\n';
     msg += '/transfer @ten <xu> /top\n\n';
 
@@ -284,6 +284,35 @@ const userCmds = {
   daily: (a, ctx) => G.economy.daily(ctx.senderId),
   checkin: (a, ctx) => G.misc.checkin(G.economy, ctx.senderId),
   work: (a, ctx) => G.economy.work(ctx.senderId),
+
+  robbank: (a, ctx) => {
+    const res = G.economy.robBank(ctx.senderId);
+    if (!res.ok && !res.caught) return res.msg; // cooldown
+    if (res.ok && res.jackpot) {
+      return [
+        '🏦💥💥 JACKPOT! CƯỚP SẠCH NGÂN HÀNG!',
+        '',
+        `Pool bank: ${res.poolTotal.toLocaleString()} xu`,
+        `Cuỗm ${res.pct}%: +${res.stolen.toLocaleString()} xu`,
+        '(tiền bị trừ từ tài khoản của các người gửi)',
+      ].join('\n');
+    }
+    if (res.ok) {
+      return [
+        '🏦✅ CƯỚP THÀNH CÔNG!',
+        '',
+        `Pool bank: ${res.poolTotal.toLocaleString()} xu`,
+        `Cuỗm 3%: +${res.stolen.toLocaleString()} xu`,
+        '(tiền bị trừ từ tài khoản của các người gửi)',
+      ].join('\n');
+    }
+    return [
+      '🚨 THẤT BẠI! Bị bắt quả tang.',
+      '',
+      `Phạt ${res.pct}% xu: -${res.fine.toLocaleString()} xu`,
+      `Ví còn lại: ${res.xu.toLocaleString()} xu`,
+    ].join('\n');
+  },
   profile: (a, ctx) => {
     if (a?.trim()) {
       // Xem profile nguoi khac: /profile @ten hoac /profile ID
