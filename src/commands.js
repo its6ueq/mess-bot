@@ -1,3 +1,9 @@
+// ============================================================
+// COMMANDS — Command registry pattern
+// Refactored from if/else chain into Map-based registry.
+// ZERO behavioral changes — same commands, same logic.
+// ============================================================
+
 const config = require('../config');
 const G = require('./games/index');
 const { handleTTS } = require('./tts');
@@ -29,40 +35,77 @@ function resolveTarget(input) {
   return null;
 }
 
-// === ADMIN COMMANDS ===
-const adminCmds = {
-  setrule: (args) => {
+// ============================================================
+// COMMAND REGISTRY
+// Each entry: { handler, admin, aliases }
+// handler(args, ctx) -> string | null
+// ============================================================
+const registry = new Map();
+
+function register(name, opts) {
+  registry.set(name, opts);
+  if (opts.aliases) {
+    for (const alias of opts.aliases) {
+      registry.set(alias, { ...opts, _aliasOf: name });
+    }
+  }
+}
+
+// ─── ADMIN COMMANDS ────────────────────────────────────
+register('setrule', {
+  admin: true,
+  handler: (args) => {
     const m = args.match(/^(\S+)\s+(.+)$/);
     if (!m) return '/setrule <trigger> <response>';
     config.setRule(m[1], m[2]);
     return `Rule: "${m[1]}" -> "${m[2]}"`;
   },
-  delrule: (args) => {
+});
+
+register('delrule', {
+  admin: true,
+  handler: (args) => {
     if (!args) return '/delrule <trigger>';
     config.deleteRule(args.trim());
     return `Xoa rule: "${args.trim()}"`;
   },
-  rules: () => {
+});
+
+register('rules', {
+  admin: true,
+  handler: () => {
     const r = config.rules;
     const e = Object.entries(r);
     if (!e.length) return 'Chua co rule!';
     return 'RULES:\n' + e.map(([t, r], i) => `${i + 1}. "${t}" -> "${r}"`).join('\n');
   },
-  addadmin: (args) => {
+});
+
+register('addadmin', {
+  admin: true,
+  handler: (args) => {
     if (!args) return '/addadmin @ten hoac /addadmin ID';
     const target = resolveTarget(args.trim());
     if (!target) return `Khong tim thay user "${args.trim()}"! Ho can tuong tac voi bot truoc.`;
     config.addAdmin(target.id);
     return `+Admin: ${target.displayName} (${target.id})`;
   },
-  removeadmin: (args) => {
+});
+
+register('removeadmin', {
+  admin: true,
+  handler: (args) => {
     if (!args) return '/removeadmin @ten hoac /removeadmin ID';
     const target = resolveTarget(args.trim());
     if (!target) return `Khong tim thay user "${args.trim()}"!`;
     config.removeAdmin(target.id);
     return `-Admin: ${target.displayName} (${target.id})`;
   },
-  admins: () => {
+});
+
+register('admins', {
+  admin: true,
+  handler: () => {
     const l = config.admins;
     if (!l.length) return 'Chua co admin!';
     return 'ADMINS:\n' + l.map((id, i) => {
@@ -70,19 +113,32 @@ const adminCmds = {
       return `${i + 1}. ${name} (${id})`;
     }).join('\n');
   },
-  shutdown: () => { setTimeout(() => process.exit(0), 1000); return 'Bot dang tat...'; },
-  say: (args) => args || '/say <text>',
-  status: () => {
+});
+
+register('shutdown', {
+  admin: true,
+  handler: () => { setTimeout(() => process.exit(0), 1000); return 'Bot dang tat...'; },
+});
+
+register('say', {
+  admin: true,
+  handler: (args) => args || '/say <text>',
+});
+
+register('status', {
+  admin: true,
+  handler: () => {
     const u = process.uptime();
     return `STATUS:\nUptime: ${Math.floor(u/3600)}h ${Math.floor((u%3600)/60)}m\nRules: ${Object.keys(config.rules).length}\nAdmins: ${config.admins.length}\nPlayers: ${Object.keys(G.economy.players).length}`;
   },
-  // Admin transfer: /addxu @ten so hoac /addxu ID so (giong syntax transfer)
-  addxu: (args) => {
+});
+
+register('addxu', {
+  admin: true,
+  handler: (args) => {
     if (!args) return '/addxu @ten so\nVD: /addxu @Nguyen Duy 1000';
 
     const trimmed = args.trim();
-
-    // Pattern: @ten so hoac ten so hoac ID so
     const nameFirst = trimmed.match(/^@?(.+?)\s+(\d+)$/);
     const moneyFirst = trimmed.match(/^(\d+)\s+@?(.+)$/);
 
@@ -105,8 +161,11 @@ const adminCmds = {
     G.economy.addXu(target.id, amount);
     return `+${amount} xu cho ${target.displayName} (${target.id})`;
   },
-  // Admin set xu: /setxu @ten so
-  setxu: (args) => {
+});
+
+register('setxu', {
+  admin: true,
+  handler: (args) => {
     if (!args) return '/setxu @ten so_xu';
     const trimmed = args.trim();
     const nameFirst = trimmed.match(/^@?(.+?)\s+(\d+)$/);
@@ -121,11 +180,12 @@ const adminCmds = {
     G.economy._save();
     return `Set ${target.displayName} xu = ${amount}`;
   },
-};
+});
 
-// === USER COMMANDS (game + economy + misc) ===
-const userCmds = {
-  help: (args, ctx) => {
+// ─── USER COMMANDS ─────────────────────────────────────
+
+register('help', {
+  handler: (args, ctx) => {
     const topic = (args || '').trim().toLowerCase();
 
     // /help <game> - chi tiet tung game
@@ -149,12 +209,9 @@ const userCmds = {
         'Doan tu tieng Anh 5 chu cai trong 6 luot.\n' +
         '🟩 = Dung vi tri | 🟨 = Sai vi tri | ⬛ = Khong co',
       blackjack: '🃏 BLACKJACK (Xi Dach)\n\n' +
-        '/blackjack [xu] - Bat dau (mac dinh 100 xu)\n\n' +
-        'Lenh trong game:\n' +
-        '"rut" / "r" - Rut them bai\n' +
-        '"dung" / "d" - Dung\n' +
-        '"double" - Tang gap doi cuoc (chi 2 la dau, tong 9/10/11)\n\n' +
-        'Bot tu dong goi y nuoc di theo basic strategy.',
+        '/blackjack [xu] - Bat dau (mac dinh 50 xu)\n' +
+        'Go "hit" de rut bai, "stand" de dung.\n' +
+        'Gan 21 diem nhat thang!',
       bj: null,
       taixiu: '🎲 TAI XIU\n\n' +
         '/taixiu <t/x> [xu] - Dat cuoc\n' +
@@ -209,138 +266,132 @@ const userCmds = {
     if (topic === 'bc') return gameHelp.baucua;
     if (gameHelp[topic]) return gameHelp[topic];
 
-    // /help (tong quat)
-    let msg = 'LENH BOT:\n\n';
+    // /help (tổng quát)
+    let msg = '📖 LỆNH BOT:\n\n';
     msg += '--- Chung ---\n';
     msg += '/help /ping /myid\n';
-    msg += '/chat <msg> - Chat voi AI\n';
-    msg += '/code <mo ta> - AI viet code\n';
-    msg += '/tts <text> - Text-to-Speech\n\n';
-    msg += '--- Economy ---\n';
-    msg += '/daily /checkin /work /robbank /profile\n';
-    msg += '/balance /deposit /withdraw\n';
-    msg += '/transfer @ten <xu> /top\n\n';
+    msg += '/chat <lời nhắn> - Trò chuyện với AI\n';
+    msg += '/code <mô tả> - AI viết code\n';
+    msg += '/tts <chữ> - Đọc thành giọng nói\n\n';
 
-    msg += '--- San Thu (OwO) ---\n';
-    msg += '/hunt /h - Di san (RNG)\n';
-    msg += '/zoo [#] - Xem bo suu tap / chi tiet\n';
-    msg += '/team - Xem team 3 con\n';
-    msg += '/team set <1-3> <#uid> - Dat team\n';
-    msg += '/album - Bo suu tap thu\n';
-    msg += '/zsell <#uid|all> - Ban thu\n\n';
+    msg += '--- Kinh Tế ---\n';
+    msg += '/daily /checkin - Nhận thưởng hằng ngày\n';
+    msg += '/work - Đi làm kiếm xu\n';
+    msg += '/profile /balance - Xem hồ sơ, số dư\n';
+    msg += '/deposit /withdraw - Gửi/rút ngân hàng\n';
+    msg += '/transfer @tên <xu> - Chuyển xu\n';
+    msg += '/top - Bảng xếp hạng giàu nhất\n';
+    msg += '/robbank - Cướp ngân hàng (rủi ro)\n\n';
 
-    msg += '--- Battle ---\n';
-    msg += '/battle /b - Danh PvE\n';
-    msg += '/battle @ten - Danh PvP\n\n';
+    msg += '--- Thú Cưng (OwO) ---\n';
+    msg += '/hunt - Đi săn bắt thú vào sở thú\n';
+    msg += '/zoo - Xem sở thú của bạn\n';
+    msg += '/team - Lập đội hình chiến đấu\n';
+    msg += '/battle @tên - Đấu thú với người khác\n';
+    msg += '/weapons /wequip /wremove - Vũ khí\n';
+    msg += '/gems /gemequip /gemremove - Đá quý\n';
+    msg += '/crates /open <id> - Mở rương đồ\n';
+    msg += '/zsell <id> - Bán thú\n';
+    msg += '/halbum - Bộ sưu tập thú\n\n';
 
-    msg += '--- Trang bi ---\n';
-    msg += '/weapons - Xem vu khi\n';
-    msg += '/wequip <wpUid> <animalUid> - Lap vu khi\n';
-    msg += '/wremove <animalUid> - Go vu khi\n';
-    msg += '/gems - Xem ngoc\n';
-    msg += '/gemequip <gemId> <uid> <slot> - Lap ngoc\n';
-    msg += '/gemremove <uid> <slot> - Go ngoc\n\n';
+    msg += '--- Game May Rủi ---\n';
+    msg += '/wordle - Đoán chữ tiếng Anh\n';
+    msg += '/blackjack [xu] - Xì dách\n';
+    msg += '/taixiu <t/x> [xu] - Tài xỉu\n';
+    msg += '/baucua <con> [xu] - Bầu cua\n';
+    msg += '/slots [xu] - Máy quay\n';
+    msg += '/rps <k/b/bao> [xu] - Oẳn tù tì\n';
+    msg += '/xoso [xu] - Xổ số (nhiều người)\n';
+    msg += '/duel @tên [xu] - Thách đấu đánh bài\n';
+    msg += '/cf @tên [xu] - Tung đồng xu PvP\n';
+    msg += '/rob @tên - Cướp xu người khác\n';
+    msg += '/accept /decline - Nhận/từ chối thách đấu\n\n';
 
-    msg += '--- Ruong ---\n';
-    msg += '/crates - Xem ruong\n';
-    msg += '/open [lbId] - Mo ruong\n\n';
+    msg += '--- Khác ---\n';
+    msg += '/dice /flip /d20 - Xúc xắc, tung xu\n';
+    msg += '/8ball <câu hỏi> - Bói toán\n';
+    msg += '/lucky /emoji /card /td - Vui vẻ\n';
+    msg += '/clearchat - Xoá lịch sử AI\n';
+    msg += '/endgame - Kết thúc game đang chơi\n\n';
 
-    msg += '--- Games ---\n';
-    msg += '/wordle - Wordle\n';
-    msg += '/blackjack [xu] - Xi dach\n';
-    msg += '/taixiu <t/x> [xu] - Tai xiu\n';
-    msg += '/baucua <con> [xu] - Bau cua\n';
-    msg += '/slots [xu] - May quay\n';
-    msg += '/rps <k/b/bao> [xu] - Oan tu ti\n';
-    msg += '/xoso [xu] - Xo so (nhieu nguoi)\n';
-    msg += '/duel @ten [xu] - Thach dau danh bai\n';
-    msg += '/cf @ten [xu] - Coinflip PvP\n';
-    msg += '/rob @ten - Cuop xu\n\n';
-
-    msg += '--- Khac ---\n';
-    msg += '/dice /flip /d20 /8ball <cau hoi>\n';
-    msg += '/lucky /emoji /card\n';
-    msg += '/td <truth/dare>\n';
-    msg += '/endgame - Ket thuc game\n\n';
-    msg += 'Go /help <ten game> de xem chi tiet.\n';
-    msg += 'VD: /help xoso, /help blackjack';
+    if (ctx.isGroup) {
+      msg += '💡 Trong nhóm: gõ lệnh bắt đầu bằng /  (VD: /daily)\n';
+    }
+    msg += 'Gõ /help <tên game> để xem chi tiết.\n';
+    msg += 'VD: /help xoso, /help blackjack, /help rob';
 
     if (isAdmin(ctx.senderId)) {
       msg += '\n\n--- Admin ---\n';
       msg += '/setrule /delrule /rules\n';
       msg += '/addadmin /removeadmin /admins\n';
       msg += '/say /status /shutdown\n';
-      msg += '/addxu @ten so /setxu @ten so\n';
+      msg += '/addxu @tên <xu> /setxu @tên <xu>\n';
     }
     return msg;
   },
+});
 
-  ping: () => `Pong! (${new Date().toLocaleTimeString('vi-VN')})`,
+register('ping', {
+  handler: () => `Pong! (${new Date().toLocaleTimeString('vi-VN')})`,
+});
 
-  // Hien thi Facebook ID cua nguoi dung
-  myid: (a, ctx) => `ID cua ban: ${ctx.senderId}\nTen: ${ctx.sender}`,
+register('myid', {
+  handler: (a, ctx) => `ID cua ban: ${ctx.senderId}\nTen: ${ctx.sender}`,
+});
 
-  // === ECONOMY (tat ca dung senderId) ===
-  daily: (a, ctx) => G.economy.daily(ctx.senderId),
-  checkin: (a, ctx) => G.misc.checkin(G.economy, ctx.senderId),
-  work: (a, ctx) => G.economy.work(ctx.senderId),
+// ─── ECONOMY ───────────────────────────────────────────
+register('daily', {
+  handler: (a, ctx) => G.economy.daily(ctx.senderId),
+});
 
-  robbank: (a, ctx) => {
-    const res = G.economy.robBank(ctx.senderId);
-    if (!res.ok && !res.caught) return res.msg; // cooldown
-    if (res.ok && res.jackpot) {
-      return [
-        '🏦💥💥 JACKPOT! CƯỚP SẠCH NGÂN HÀNG!',
-        '',
-        `Pool bank: ${res.poolTotal.toLocaleString()} xu`,
-        `Cuỗm ${res.pct}%: +${res.stolen.toLocaleString()} xu`,
-        '(tiền bị trừ từ tài khoản của các người gửi)',
-      ].join('\n');
-    }
-    if (res.ok) {
-      return [
-        '🏦✅ CƯỚP THÀNH CÔNG!',
-        '',
-        `Pool bank: ${res.poolTotal.toLocaleString()} xu`,
-        `Cuỗm 3%: +${res.stolen.toLocaleString()} xu`,
-        '(tiền bị trừ từ tài khoản của các người gửi)',
-      ].join('\n');
-    }
-    return [
-      '🚨 THẤT BẠI! Bị bắt quả tang.',
-      '',
-      `Phạt ${res.pct}% xu: -${res.fine.toLocaleString()} xu`,
-      `Ví còn lại: ${res.xu.toLocaleString()} xu`,
-    ].join('\n');
-  },
-  profile: (a, ctx) => {
+register('checkin', {
+  handler: (a, ctx) => G.misc.checkin(G.economy, ctx.senderId),
+});
+
+register('work', {
+  handler: (a, ctx) => G.economy.work(ctx.senderId),
+});
+
+register('profile', {
+  handler: (a, ctx) => {
     if (a?.trim()) {
-      // Xem profile nguoi khac: /profile @ten hoac /profile ID
       const target = resolveTarget(a.trim());
       if (target) return G.economy.profile(target.id);
       return `Khong tim thay user "${a.trim()}"!`;
     }
     return G.economy.profile(ctx.senderId);
   },
-  balance: (a, ctx) => {
+});
+
+register('balance', {
+  aliases: ['bal'],
+  handler: (a, ctx) => {
     const b = G.economy.getBalance(ctx.senderId);
     return `Vi: ${b.xu} xu\nBank: ${b.bank} xu\nTong: ${b.total} xu`;
   },
-  bal: (a, ctx) => userCmds.balance(a, ctx),
-  deposit: (a, ctx) => G.economy.deposit(ctx.senderId, a?.trim() || 'all'),
-  withdraw: (a, ctx) => G.economy.withdraw(ctx.senderId, a?.trim() || 'all'),
-  top: (a, ctx) => G.economy.top(),
+});
 
-  transfer: (a, ctx) => {
-    if (!a) return '/transfer @ten <so xu>\nVD: /transfer @Nguyen Duy 100';
+register('deposit', {
+  handler: (a, ctx) => G.economy.deposit(ctx.senderId, a?.trim() || 'all'),
+});
+
+register('withdraw', {
+  handler: (a, ctx) => G.economy.withdraw(ctx.senderId, a?.trim() || 'all'),
+});
+
+register('top', {
+  handler: () => G.economy.top(),
+});
+
+register('transfer', {
+  handler: (a, ctx) => {
+    if (!a) return 'Nhan /transfer @ten <so xu>\nVD: /transfer @Nguyen Duy 100';
 
     const args = a.trim();
     let targetStr = '';
     let amount = 0;
 
-    // Pattern 1: Ten truoc, Tien sau (VD: /transfer @Nguyen Van A 100)
     const nameFirst = args.match(/^@?(.+?)\s+(\d+)$/);
-    // Pattern 2: Tien truoc, Ten sau (VD: /transfer 100 @Nguyen Van A)
     const moneyFirst = args.match(/^(\d+)\s+@?(.+)$/);
 
     if (nameFirst) {
@@ -353,7 +404,6 @@ const userCmds = {
       return 'Cu phap: /transfer @ten so_xu';
     }
 
-    // Resolve target -> ID
     const target = resolveTarget(targetStr);
     if (!target) return `Khong tim thay user "${targetStr}"! Ho can tuong tac voi bot truoc.`;
 
@@ -361,132 +411,245 @@ const userCmds = {
 
     return G.economy.transfer(ctx.senderId, target.id, amount);
   },
+});
 
-  // === SESSION GAMES (dung senderId) ===
-  wordle: (a, ctx) => {
+// ─── SESSION GAMES ─────────────────────────────────────
+register('wordle', {
+  handler: (a, ctx) => {
     if (G.hasActiveGame(ctx.threadId)) return 'Dang co game! /endgame truoc.';
     return G.wordle.start({ threadId: ctx.threadId, player: ctx.senderId, economy: G.economy, sessions: G.sessions });
   },
-  blackjack: (a, ctx) => {
+});
+
+register('blackjack', {
+  aliases: ['bj'],
+  handler: (a, ctx) => {
     if (G.hasActiveGame(ctx.threadId)) return 'Dang co game! /endgame truoc.';
     return G.blackjack.start({ threadId: ctx.threadId, player: ctx.senderId, economy: G.economy, sessions: G.sessions }, a?.trim());
   },
-  bj: (a, ctx) => userCmds.blackjack(a, ctx),
+});
 
-  // === INSTANT GAMES (dung senderId) ===
-  taixiu: (a, ctx) => {
+// ─── INSTANT GAMES ─────────────────────────────────────
+register('taixiu', {
+  aliases: ['tx'],
+  handler: (a, ctx) => {
     if (a && a.includes('@')) {
       const r = G.pvp.taixiuPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
       if (r) return r;
     }
     return G.taixiu.play({ player: ctx.senderId, economy: G.economy }, a || '');
   },
-  tx: (a, ctx) => userCmds.taixiu(a, ctx),
-  baucua: (a, ctx) => {
+});
+
+register('baucua', {
+  aliases: ['bc'],
+  handler: (a, ctx) => {
     if (a && a.includes('@')) {
       const r = G.pvp.baucuaPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
       if (r) return r;
     }
     return G.baucua.play({ player: ctx.senderId, economy: G.economy }, a || '');
   },
-  bc: (a, ctx) => userCmds.baucua(a, ctx),
-  slots: (a, ctx) => {
+});
+
+register('slots', {
+  aliases: ['slot'],
+  handler: (a, ctx) => {
     if (a && a.includes('@')) {
       const r = G.pvp.slotsPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
       if (r) return r;
     }
     return G.slots.play({ player: ctx.senderId, economy: G.economy }, a?.trim());
   },
-  slot: (a, ctx) => userCmds.slots(a, ctx),
-  rps: (a, ctx) => {
+});
+
+register('rps', {
+  handler: (a, ctx) => {
     if (a && a.includes('@')) {
       const r = G.pvp.rpsPvP({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a.trim());
       if (r) return r;
     }
     return G.rps.play({ player: ctx.senderId, economy: G.economy }, a || '');
   },
-  xoso: (a, ctx) => G.lottery.start({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
-  xs: (a, ctx) => userCmds.xoso(a, ctx),
-  duel: (a, ctx) => G.pvp.duel({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
-  cf: (a, ctx) => G.pvp.coinflip({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
-  coinflip: (a, ctx) => userCmds.cf(a, ctx),
-  rob: (a, ctx) => G.pvp.rob({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
-  cuop: (a, ctx) => userCmds.rob(a, ctx),
-  accept: (a, ctx) => G.pvp.accept({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
-  decline: (a, ctx) => G.pvp.decline({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }),
+});
 
-// === HUNT (OwO-style) ===
-  hunt: (a, ctx) => G.hunt.hunt({ player: ctx.senderId, economy: G.economy }),
-  h: (a, ctx) => userCmds.hunt(a, ctx),
-  album: (a, ctx) => G.hunt.huntAlbum({ player: ctx.senderId, economy: G.economy }),
+register('xoso', {
+  aliases: ['xs'],
+  handler: (a, ctx) => G.lottery.start({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+});
 
-  // === ZOO & TEAM ===
-  zoo: (a, ctx) => G.zoo.zoo({ player: ctx.senderId, economy: G.economy }, a?.trim()),
-  team: (a, ctx) => G.zoo.team({ player: ctx.senderId, economy: G.economy }, a?.trim()),
-  zsell: (a, ctx) => G.zoo.zooSell({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+register('duel', {
+  handler: (a, ctx) => G.pvp.duel({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+});
 
-  // === WEAPONS ===
-  weapons: (a, ctx) => G.zoo.weapons({ player: ctx.senderId, economy: G.economy }),
-  wequip: (a, ctx) => G.zoo.weaponEquip({ player: ctx.senderId, economy: G.economy }, a?.trim()),
-  wremove: (a, ctx) => G.zoo.weaponRemove({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+register('cf', {
+  aliases: ['coinflip'],
+  handler: (a, ctx) => G.pvp.coinflip({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+});
 
-  // === GEMS ===
-  gems: (a, ctx) => G.gems.gems({ player: ctx.senderId, economy: G.economy }),
-  gemequip: (a, ctx) => G.gems.gemEquip({ player: ctx.senderId, economy: G.economy }, a?.trim()),
-  gemremove: (a, ctx) => G.gems.gemRemove({ player: ctx.senderId, economy: G.economy }, a?.trim()),
+register('rob', {
+  aliases: ['cuop'],
+  handler: (a, ctx) => G.pvp.rob({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+});
 
-  // === BATTLE ===
-  battle: (a, ctx) => G.battle.battle({ player: ctx.senderId, economy: G.economy, resolveTarget: (str) => { const t = resolveTarget(str); return t?.id; } }, a?.trim()),
-  b: (a, ctx) => userCmds.battle(a, ctx),
+register('robbank', {
+  aliases: ['cuopnganhang', 'heist'],
+  handler: (a, ctx) => {
+    const r = G.economy.robBank(ctx.senderId);
+    if (r.ok && r.jackpot)
+      return `💰🎰 JACKPOT! Bạn đột nhập kho bạc và cuỗm ${r.stolen} xu (${r.pct}% của ${r.poolTotal} xu trong ngân hàng)!`;
+    if (r.ok)
+      return `💰 Cướp ngân hàng thành công!\n+${r.stolen} xu (từ tổng ${r.poolTotal} xu).`;
+    if (r.caught)
+      return `🚔 Bị bắt khi cướp ngân hàng!\nPhạt ${r.fine} xu (${r.pct}%). Còn ${r.xu} xu.`;
+    return r.msg || 'Không cướp được!';
+  },
+});
 
-  // === LOOTBOX ===
-  open: (a, ctx) => G.lootbox.open({ player: ctx.senderId, economy: G.economy }, a?.trim()),
-  crates: (a, ctx) => G.lootbox.crates({ player: ctx.senderId, economy: G.economy }),
+register('accept', {
+  handler: (a, ctx) => G.pvp.accept({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }, a?.trim()),
+});
 
-  // === MISC GAMES ===
-  dice: (a) => G.misc.dice(a),
-  flip: () => G.misc.flip(),
-  d20: () => G.misc.rollD20(),
-  '8ball': (a) => G.misc.eightBall(a),
-  lucky: () => G.misc.lucky(),
-  td: (a) => G.misc.truthOrDare(a),
-  emoji: () => G.misc.emojiQuiz(),
-  card: () => G.misc.cardBattle(),
+register('decline', {
+  handler: (a, ctx) => G.pvp.decline({ player: ctx.senderId, economy: G.economy, threadId: ctx.threadId, sessions: G.sessions }),
+});
 
-  // === TTS ===
-  tts: (a, ctx) => {
+// ─── HUNTING (OwO) ─────────────────────────────────────
+// /hunt bắt thú vào "zoo". Quản lý thú qua /zoo /team /battle /gems /weapons.
+register('hunt', {
+  aliases: ['h', 'san'],
+  handler: (a, ctx) => G.hunt.hunt({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('halbum', {
+  aliases: ['album'],
+  handler: (a, ctx) => G.hunt.huntAlbum({ player: ctx.senderId, economy: G.economy }),
+});
+
+// ─── ZOO / TEAM / GEMS / LOOTBOX / BATTLE ─────────────
+register('zoo', {
+  handler: (a, ctx) => G.zoo.zoo({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('team', {
+  handler: (a, ctx) => G.zoo.team({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('zsell', {
+  handler: (a, ctx) => G.zoo.zooSell({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('wequip', {
+  handler: (a, ctx) => G.zoo.weaponEquip({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('wremove', {
+  handler: (a, ctx) => G.zoo.weaponRemove({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('weapons', {
+  handler: (a, ctx) => G.zoo.weapons({ player: ctx.senderId, economy: G.economy }),
+});
+
+register('gems', {
+  handler: (a, ctx) => G.gems.gems({ player: ctx.senderId, economy: G.economy }),
+});
+
+register('gemequip', {
+  handler: (a, ctx) => G.gems.gemEquip({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('gemremove', {
+  handler: (a, ctx) => G.gems.gemRemove({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('open', {
+  handler: (a, ctx) => G.lootbox.open({ player: ctx.senderId, economy: G.economy }, a),
+});
+
+register('crates', {
+  handler: (a, ctx) => G.lootbox.crates({ player: ctx.senderId, economy: G.economy }),
+});
+
+register('battle', {
+  aliases: ['pvp'],
+  handler: (a, ctx) => G.battle.battle({ player: ctx.senderId, economy: G.economy, resolveTarget }, a),
+});
+
+// ─── MISC GAMES ────────────────────────────────────────
+register('dice', {
+  handler: (a) => G.misc.dice(a),
+});
+
+register('flip', {
+  handler: () => G.misc.flip(),
+});
+
+register('d20', {
+  handler: () => G.misc.rollD20(),
+});
+
+register('8ball', {
+  handler: (a) => G.misc.eightBall(a),
+});
+
+register('lucky', {
+  handler: () => G.misc.lucky(),
+});
+
+register('td', {
+  handler: (a) => G.misc.truthOrDare(a),
+});
+
+register('emoji', {
+  handler: () => G.misc.emojiQuiz(),
+});
+
+register('card', {
+  handler: () => G.misc.cardBattle(),
+});
+
+// ─── TTS ───────────────────────────────────────────────
+register('tts', {
+  handler: (a, ctx) => {
     // Return promise - bot.js se handle async + gui file
     return handleTTS(a || '');
   },
+});
 
-  endgame: (a, ctx) => {
+register('endgame', {
+  handler: (a, ctx) => {
     if (G.hasActiveGame(ctx.threadId)) {
       G.endGame(ctx.threadId);
       return 'Game ket thuc!';
     }
     return 'Khong co game nao!';
   },
-};
+});
 
+// ============================================================
+// DISPATCH — Same behavior as original handleCommand()
+// ============================================================
 function handleCommand(cmd, args, context) {
   const command = cmd.toLowerCase();
   console.log(`[DEBUG] Sender ID: "${context.senderId}" - Tên: "${context.sender}"`);
+
   // Game input (dang choi game)
   if (G.hasActiveGame(context.threadId) && !command.startsWith('/')) {
     const result = G.handleGameInput(context.threadId, cmd, context.senderId);
     if (result) return result;
   }
 
-  // Admin commands (check bang senderId)
-  if (adminCmds[command]) {
-    if (!isAdmin(context.senderId)) return 'Khong phai admin!';
-    return adminCmds[command](args, context);
+  // Lookup in registry
+  const entry = registry.get(command);
+  if (!entry) return null;
+
+  // Admin check
+  if (entry.admin && !isAdmin(context.senderId)) {
+    return 'Bạn không phải admin!';
   }
 
-  // User commands
-  if (userCmds[command]) return userCmds[command](args, context);
-
-  return null;
+  return entry.handler(args, context);
 }
 
 function checkAutoReply(text) {

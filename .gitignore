@@ -10,3 +10,17 @@ bot-profile/
 data/
 *.json
 *.log
+
+# Dev / inspection / test scripts (không đưa vào repo)
+inspect-live.js
+grab-bg.js
+preview-all.js
+render-card-test.js
+test-send.js
+test-dom.js
+test-dom2.js
+test-fix.js
+test-reply.js
+scratch-out.txt
+card-preview.png
+lb-preview.png

@@ -76,13 +76,13 @@ module.exports = {
     db.setAll('style', data);
   },
 
-  // Messenger DOM selectors
+  // Messenger DOM selectors (2026 E2EE)
   selectors: {
-    conversationList: '[role="list"]',
+    conversationList: '[role="navigation"] a[href*="/t/"]',
     conversationLink: 'a[href*="/t/"]',
     messageList: '[role="main"]',
-    messageRow: 'div[class] > div[class] > div[dir="auto"]',
-    messageGroup: '[role="row"]',
+    messageItem: '[role="article"]',
+    messageText: 'div[dir="auto"]',
     messageInput: '[role="textbox"][contenteditable="true"]',
     threadHeader: 'div[role="main"] h2, div[role="main"] span[dir="auto"]',
   },

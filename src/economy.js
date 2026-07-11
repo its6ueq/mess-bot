@@ -34,14 +34,36 @@ class Economy {
     return id;
   }
 
+  // Chuan hoa ten de so sanh: thuong, bo dau tieng Viet, gon khoang trang
+  _norm(s) {
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g, '') // bo dau
+      .replace(/đ/g, 'd')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   findIdByName(name) {
     if (!name) return null;
-    const lower = name.toLowerCase();
-    for (const [id, p] of Object.entries(this.players)) {
-      if (p.displayName && p.displayName.toLowerCase() === lower) return id;
+    const q = this._norm(name);
+    if (!q) return null;
+
+    const entries = [
+      ...Object.entries(this.players).map(([id, p]) => [id, p.displayName]),
+      ...Object.entries(this.users).map(([id, u]) => [id, u.name]),
+    ].filter(([, nm]) => nm);
+
+    // 1. Khop chinh xac (sau khi bo dau)
+    for (const [id, nm] of entries) {
+      if (this._norm(nm) === q) return id;
     }
-    for (const [id, u] of Object.entries(this.users)) {
-      if (u.name && u.name.toLowerCase() === lower) return id;
+    // 2. Khop mot phan: ten dang ky chua tu khoa, hoac nguoc lai (>= 2 ky tu)
+    if (q.length >= 2) {
+      for (const [id, nm] of entries) {
+        const n = this._norm(nm);
+        if (n.includes(q) || q.includes(n)) return id;
+      }
     }
     return null;
   }
@@ -76,11 +98,29 @@ class Economy {
         albumRewards: [],
       };
       this._save();
-    } else if (displayName && this.players[id].displayName !== displayName) {
-      this.players[id].displayName = displayName;
-      this._save();
+    } else {
+      if (displayName && this.players[id].displayName !== displayName) {
+        this.players[id].displayName = displayName;
+        this._save();
+      }
+      this._ensureFields(this.players[id]);
     }
     return this.players[id];
+  }
+
+  // Backfill cac field mac dinh cho player cu (tuong thich data cu, tranh crash)
+  _ensureFields(p) {
+    const defaults = {
+      xu: 1000, bank: 0, level: 1, exp: 0, totalEarned: 0, totalSpent: 0,
+      fishCaught: 0, gamesPlayed: 0, gamesWon: 0, inventory: [],
+      checkinStreak: 0, album: {}, albumRewards: [], rod: 'tre',
+    };
+    let changed = false;
+    for (const [k, v] of Object.entries(defaults)) {
+      if (p[k] === undefined) { p[k] = Array.isArray(v) ? [] : (typeof v === 'object' && v !== null ? {} : v); changed = true; }
+    }
+    if (changed) this._save();
+    return p;
   }
 
   getBalance(id) {
@@ -195,7 +235,7 @@ class Economy {
       { name: 'rửa xe', min: 40, max: 100 },
       { name: 'làm giúp việc theo giờ', min: 50, max: 120 },
       { name: 'tài xế taxi', min: 110, max: 280 },
-      { name: 'xin tiền mẹ', min: 3000, max: 5000 },
+      { name: 'xin tiền mẹ', min: 3600, max: 5000 },
     ];
 
     const job = jobs[Math.floor(Math.random() * jobs.length)];
@@ -287,7 +327,7 @@ class Economy {
     const p = this.getPlayer(id);
     const now = Date.now();
     const COOLDOWN_NORMAL  = 1 * 60 * 60 * 1000; // 1 tiếng
-    const COOLDOWN_JACKPOT = 3 * 60 * 60 * 1000; // 3 tiếng (gấp 3)
+    const COOLDOWN_JACKPOT = 1 * 60 * 60 * 1000; // 3 tiếng (gấp 3)
 
     if (p.robBankCooldownUntil && now < p.robBankCooldownUntil) {
       const remaining = Math.ceil((p.robBankCooldownUntil - now) / 60000);
@@ -336,6 +376,26 @@ class Economy {
     p.robBankCooldownUntil = now + COOLDOWN_NORMAL;
     this._save();
     return { ok: false, caught: true, fine, pct: Math.round(finePct * 100), xu: p.xu };
+  }
+
+  // Danh sách xếp hạng có cấu trúc (để render ảnh leaderboard)
+  getTop(n = 8) {
+    return Object.values(this.players)
+      .map(p => ({ id: p.id, name: p.displayName || p.id, total: (p.xu || 0) + (p.bank || 0), level: p.level || 1 }))
+      // Bỏ tài khoản chưa có tên hiển thị (name toàn số = ID trần)
+      .filter(p => p.name && !/^\d+$/.test(p.name) && p.name !== 'test123')
+      .sort((a, b) => b.total - a.total)
+      .slice(0, n)
+      .map((p, i) => ({ ...p, rank: i + 1 }));
+  }
+
+  // Thứ hạng theo tổng tài sản (ví + bank). Trả về số thứ tự (1 = giàu nhất) hoặc null.
+  getRank(id) {
+    const sorted = Object.values(this.players)
+      .map(p => ({ id: p.id, total: (p.xu || 0) + (p.bank || 0) }))
+      .sort((a, b) => b.total - a.total);
+    const idx = sorted.findIndex(p => p.id === id);
+    return idx === -1 ? null : idx + 1;
   }
 
   recordGame(id, won) {

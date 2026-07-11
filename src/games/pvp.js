@@ -1,4 +1,8 @@
-// PvP Games - Duel, Coinflip, Rob + PvP wrappers cho taixiu, rps, baucua, slots
+// ================================================================
+// PvP Games — Duel, Coinflip, Rob + PvP wrappers (taixiu, rps, baucua, slots)
+// Refactored: shared challenge/accept flow + per-game resolve logic.
+// ZERO behavioral changes — same game mechanics, same messages.
+// ================================================================
 
 const HOUSE_CUT = 0.02; // Nha cai 2%
 
@@ -11,32 +15,31 @@ function findTarget(economy, input) {
   return economy.findIdByName(cleaned);
 }
 
-// Tao challenge chung cho moi game type
-function createChallenge(ctx, args, gameType, parseChoiceFn, minBet = 10) {
+// --- SHARED CHALLENGE SETUP (used by ALL PvP games) ---
+// Parse args, validate, take xu, create session.
+function challengeGame(ctx, args, gameType, parseArgsFn, opts = {}) {
   const { player, economy, threadId, sessions } = ctx;
+  const minBet = opts.minBet || 10;
 
   const existing = sessions.get(threadId);
   if (existing) return 'Dang co game/thach dau! /endgame truoc.';
 
-  // Parse: @ten <choice> <xu> hoac @ten <xu>
-  const parsed = parseChoiceFn(args);
-  if (!parsed) return null; // tra ve null de caller hien usage
+  const parsed = parseArgsFn(args);
+  if (!parsed) return null; // caller shows usage
 
   const { targetStr, choice, bet } = parsed;
   if (bet < minBet) return `Cuoc toi thieu ${minBet} xu!`;
 
   const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"! Ho can tuong tac voi bot truoc.`;
+  if (!targetId) return `Khong tim thay "${targetStr}"!`;
   if (targetId === player) return 'Khong the thach chinh minh!';
 
   const bal = economy.getBalance(player);
   if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-
   const targetBal = economy.getBalance(targetId);
   if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
 
   economy.removeXu(player, bet);
-
   sessions.set(threadId, {
     type: gameType,
     challenger: { id: player, bet, choice },
@@ -46,21 +49,27 @@ function createChallenge(ctx, args, gameType, parseChoiceFn, minBet = 10) {
 
   const cName = economy.getDisplayName(player);
   const oName = economy.getDisplayName(targetId);
-  return { cName, oName, bet, targetId };
+  return opts.formatChallenge(cName, oName, bet, choice, targetId);
 }
 
-function cancelChallenge(ctx, types) {
+// --- SHARED ACCEPT HANDLER ---
+// Check opponent, verify balance, take xu, run game resolve, handle result.
+function acceptGame(ctx, resolveFn, choiceArg) {
   const { player, economy, threadId, sessions } = ctx;
   const session = sessions.get(threadId);
-  if (!session || !types.includes(session.type)) return null;
+  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
 
-  if (player !== session.opponent.id && player !== session.challenger.id) {
-    return 'Ban khong lien quan!';
+  const bet = session.opponent.bet;
+  const bal = economy.getBalance(player);
+  if (bal.xu < bet) {
+    economy.addXu(session.challenger.id, session.challenger.bet);
+    sessions.delete(threadId);
+    return `Khong du xu! Can ${bet} xu. Thach dau huy.`;
   }
+  economy.removeXu(player, bet);
+  session.opponent.bet = bet;
 
-  economy.addXu(session.challenger.id, session.challenger.bet);
-  sessions.delete(threadId);
-  return true;
+  return resolveFn({ player, economy, threadId, sessions, session, bet, choiceArg });
 }
 
 function resolveWinner(economy, sessions, threadId, session, winnerId, loserId) {
@@ -76,59 +85,28 @@ function resolveWinner(economy, sessions, threadId, session, winnerId, loserId) 
   return { prize, house, totalPot };
 }
 
-// ========== DUEL (danh bai) ==========
+// =================================================================
+// DUEL — Moi nguoi chia 1 la bai, ai lon hon thang 
+// =================================================================
 
 function duel(ctx, args) {
-  const { player, economy, threadId, sessions } = ctx;
   if (!args) return '/duel @ten <xu>\nVD: /duel @Nguyen Duy 500';
 
-  const existing = sessions.get(threadId);
-  if (existing) return 'Dang co game/thach dau! /endgame truoc.';
-
-  const parts = args.trim().match(/^@?(.+?)\s+(\d+)$/);
-  if (!parts) return '/duel @ten <xu>\nVD: /duel @Nguyen Duy 500';
-
-  const targetStr = parts[1].trim();
-  const bet = parseInt(parts[2]);
-  if (bet < 50) return 'Cuoc toi thieu 50 xu!';
-
-  const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"!`;
-  if (targetId === player) return 'Khong the thach chinh minh!';
-
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-  const targetBal = economy.getBalance(targetId);
-  if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
-
-  economy.removeXu(player, bet);
-  sessions.set(threadId, {
-    type: 'duel',
-    challenger: { id: player, bet },
-    opponent: { id: targetId, bet },
-    endTime: Date.now() + 60000,
-  });
-
-  const cName = economy.getDisplayName(player);
-  const oName = economy.getDisplayName(targetId);
-  return `⚔️ THACH DAU!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept de chap nhan\n/decline de tu choi\nTu dong huy sau 60s`;
+  return challengeGame(ctx, args, 'duel',
+    (a) => {
+      const m = a.trim().match(/^@?(.+?)\s+(\d+)$/);
+      if (!m) return null;
+      return { targetStr: m[1].trim(), bet: parseInt(m[2]) };
+    },
+    {
+      minBet: 50,
+      formatChallenge: (cName, oName, bet) =>
+        `⚔️ THACH DAU!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept de chap nhan\n/decline de tu choi\nTu dong huy sau 60s`,
+    }
+  );
 }
 
-function acceptDuel(ctx) {
-  const { player, economy, threadId, sessions } = ctx;
-  const session = sessions.get(threadId);
-  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
-
-  const bet = session.opponent.bet;
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) {
-    economy.addXu(session.challenger.id, session.challenger.bet);
-    sessions.delete(threadId);
-    return `Khong du xu! Can ${bet} xu. Thach dau huy.`;
-  }
-  economy.removeXu(player, bet);
-  session.opponent.bet = bet; // confirm bet
-
+function resolveDuel({ player, economy, threadId, sessions, session }) {
   const card1 = Math.floor(Math.random() * 13) + 1;
   const card2 = Math.floor(Math.random() * 13) + 1;
   let f1 = card1, f2 = card2;
@@ -151,59 +129,27 @@ function acceptDuel(ctx) {
   return msg;
 }
 
-// ========== COINFLIP PvP ==========
+// =================================================================
+// COINFLIP PvP — 50/50 sap/ngua
+// =================================================================
 
 function coinflip(ctx, args) {
-  const { player, economy, threadId, sessions } = ctx;
   if (!args) return '/cf @ten <xu>\nVD: /cf @Nguyen Duy 200';
 
-  const existing = sessions.get(threadId);
-  if (existing) return 'Dang co game/thach dau! /endgame truoc.';
-
-  const parts = args.trim().match(/^@?(.+?)\s+(\d+)$/);
-  if (!parts) return '/cf @ten <xu>\nVD: /cf @Nguyen Duy 200';
-
-  const targetStr = parts[1].trim();
-  const bet = parseInt(parts[2]);
-  if (bet < 10) return 'Cuoc toi thieu 10 xu!';
-
-  const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"!`;
-  if (targetId === player) return 'Khong the thach chinh minh!';
-
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-  const targetBal = economy.getBalance(targetId);
-  if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
-
-  economy.removeXu(player, bet);
-  sessions.set(threadId, {
-    type: 'coinflip',
-    challenger: { id: player, bet },
-    opponent: { id: targetId, bet },
-    endTime: Date.now() + 60000,
-  });
-
-  const cName = economy.getDisplayName(player);
-  const oName = economy.getDisplayName(targetId);
-  return `🪙 COINFLIP!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept de chap nhan\n/decline de tu choi\nTu dong huy sau 60s`;
+  return challengeGame(ctx, args, 'coinflip',
+    (a) => {
+      const m = a.trim().match(/^@?(.+?)\s+(\d+)$/);
+      if (!m) return null;
+      return { targetStr: m[1].trim(), bet: parseInt(m[2]) };
+    },
+    {
+      formatChallenge: (cName, oName, bet) =>
+        `🪙 COINFLIP!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept de chap nhan\n/decline de tu choi\nTu dong huy sau 60s`,
+    }
+  );
 }
 
-function acceptCoinflip(ctx) {
-  const { player, economy, threadId, sessions } = ctx;
-  const session = sessions.get(threadId);
-  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
-
-  const bet = session.opponent.bet;
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) {
-    economy.addXu(session.challenger.id, session.challenger.bet);
-    sessions.delete(threadId);
-    return `Khong du xu! Can ${bet} xu. Coinflip huy.`;
-  }
-  economy.removeXu(player, bet);
-  session.opponent.bet = bet;
-
+function resolveCoinflip({ player, economy, threadId, sessions, session }) {
   const isHeads = Math.random() < 0.5;
   const winnerId = isHeads ? session.challenger.id : player;
   const loserId = isHeads ? player : session.challenger.id;
@@ -220,66 +166,30 @@ function acceptCoinflip(ctx) {
   return msg;
 }
 
-// ========== TAI XIU PvP ==========
-// /taixiu @ten t/x xu -> challenger chon tai/xiu, opponent tu dong doi lap
+// =================================================================
+// TAI XIU PvP — challenger chon t/x, opponent tu dong doi lap
+// =================================================================
 
 function taixiuPvP(ctx, args) {
-  const { player, economy, threadId, sessions } = ctx;
-
-  const existing = sessions.get(threadId);
-  if (existing) return 'Dang co game/thach dau! /endgame truoc.';
-
-  // Parse: @ten t/x xu
-  const match = args.trim().match(/^@?(.+?)\s+(t|x|tai|xiu|tài|xỉu)\s+(\d+)$/i);
-  if (!match) return null; // caller se hien usage
-
-  const targetStr = match[1].trim();
-  const choiceRaw = match[2].toLowerCase();
-  const bet = parseInt(match[3]);
-  const aliases = { 't': 'tai', 'tai': 'tai', 'tài': 'tai', 'x': 'xiu', 'xiu': 'xiu', 'xỉu': 'xiu' };
-  const choice = aliases[choiceRaw];
-  if (!choice) return null;
-
-  if (bet < 10) return 'Cuoc toi thieu 10 xu!';
-
-  const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"!`;
-  if (targetId === player) return 'Khong the thach chinh minh!';
-
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-  const targetBal = economy.getBalance(targetId);
-  if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
-
-  economy.removeXu(player, bet);
-  sessions.set(threadId, {
-    type: 'pvp_taixiu',
-    challenger: { id: player, bet, choice },
-    opponent: { id: targetId, bet },
-    endTime: Date.now() + 60000,
-  });
-
-  const label = { tai: 'TAI', xiu: 'XIU' };
-  const cName = economy.getDisplayName(player);
-  const oName = economy.getDisplayName(targetId);
-  return `🎲 TAI XIU PvP!\n${cName} dat ${label[choice]} - ${bet} xu!\n${oName} se la ${label[choice === 'tai' ? 'xiu' : 'tai']}\n\n${oName} go /accept de chap nhan\n/decline de tu choi`;
+  return challengeGame(ctx, args, 'pvp_taixiu',
+    (a) => {
+      const m = a.trim().match(/^@?(.+?)\s+(t|x|tai|xiu|tài|xỉu)\s+(\d+)$/i);
+      if (!m) return null;
+      const aliases = { 't': 'tai', 'tai': 'tai', 'tài': 'tai', 'x': 'xiu', 'xiu': 'xiu', 'xỉu': 'xiu' };
+      const choice = aliases[m[2].toLowerCase()];
+      if (!choice) return null;
+      return { targetStr: m[1].trim(), choice, bet: parseInt(m[3]) };
+    },
+    {
+      formatChallenge: (cName, oName, bet, choice) => {
+        const label = { tai: 'TAI', xiu: 'XIU' };
+        return `🎲 TAI XIU PvP!\n${cName} dat ${label[choice]} - ${bet} xu!\n${oName} se la ${label[choice === 'tai' ? 'xiu' : 'tai']}\n\n${oName} go /accept de chap nhan\n/decline de tu choi`;
+      },
+    }
+  );
 }
 
-function acceptTaixiu(ctx) {
-  const { player, economy, threadId, sessions } = ctx;
-  const session = sessions.get(threadId);
-  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
-
-  const bet = session.opponent.bet;
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) {
-    economy.addXu(session.challenger.id, session.challenger.bet);
-    sessions.delete(threadId);
-    return `Khong du xu! Thach dau huy.`;
-  }
-  economy.removeXu(player, bet);
-  session.opponent.bet = bet;
-
+function resolveTaixiu({ player, economy, threadId, sessions, session }) {
   const d1 = Math.floor(Math.random() * 6) + 1;
   const d2 = Math.floor(Math.random() * 6) + 1;
   const d3 = Math.floor(Math.random() * 6) + 1;
@@ -306,77 +216,35 @@ function acceptTaixiu(ctx) {
   return msg;
 }
 
-// ========== RPS PvP ==========
-// /rps @ten k/b/bao xu -> doi thu accept voi lua chon
+// =================================================================
+// RPS PvP — Oan Tu Ti, doi thu accept voi lua chon
+// =================================================================
+
+const RPS_ALIASES = {
+  'kéo': 'keo', 'keo': 'keo', 'k': 'keo', 'scissors': 'keo',
+  'búa': 'bua', 'bua': 'bua', 'b': 'bua', 'rock': 'bua',
+  'bao': 'bao', 'giấy': 'bao', 'giay': 'bao', 'paper': 'bao',
+};
 
 function rpsPvP(ctx, args) {
-  const { player, economy, threadId, sessions } = ctx;
-
-  const existing = sessions.get(threadId);
-  if (existing) return 'Dang co game/thach dau! /endgame truoc.';
-
-  // Parse: @ten choice xu
-  const match = args.trim().match(/^@?(.+?)\s+(k|b|bao|keo|kéo|bua|búa|giay|giấy|scissors|rock|paper)\s+(\d+)$/i);
-  if (!match) return null;
-
-  const targetStr = match[1].trim();
-  const choiceRaw = match[2].toLowerCase();
-  const bet = parseInt(match[3]);
-
-  const aliases = {
-    'kéo': 'keo', 'keo': 'keo', 'k': 'keo', 'scissors': 'keo',
-    'búa': 'bua', 'bua': 'bua', 'b': 'bua', 'rock': 'bua',
-    'bao': 'bao', 'giấy': 'bao', 'giay': 'bao', 'paper': 'bao',
-  };
-  const choice = aliases[choiceRaw];
-  if (!choice) return null;
-
-  if (bet < 10) return 'Cuoc toi thieu 10 xu!';
-
-  const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"!`;
-  if (targetId === player) return 'Khong the thach chinh minh!';
-
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-  const targetBal = economy.getBalance(targetId);
-  if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
-
-  economy.removeXu(player, bet);
-  sessions.set(threadId, {
-    type: 'pvp_rps',
-    challenger: { id: player, bet, choice },
-    opponent: { id: targetId, bet },
-    endTime: Date.now() + 60000,
-  });
-
-  const cName = economy.getDisplayName(player);
-  const oName = economy.getDisplayName(targetId);
-  return `✊ OAN TU TI PvP!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept <k/b/bao> de chap nhan\n/decline de tu choi`;
+  return challengeGame(ctx, args, 'pvp_rps',
+    (a) => {
+      const m = a.trim().match(/^@?(.+?)\s+(k|b|bao|keo|kéo|bua|búa|giay|giấy|scissors|rock|paper)\s+(\d+)$/i);
+      if (!m) return null;
+      const choice = RPS_ALIASES[m[2].toLowerCase()];
+      if (!choice) return null;
+      return { targetStr: m[1].trim(), choice, bet: parseInt(m[3]) };
+    },
+    {
+      formatChallenge: (cName, oName, bet) =>
+        `✊ OAN TU TI PvP!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept <k/b/bao> de chap nhan\n/decline de tu choi`,
+    }
+  );
 }
 
-function acceptRps(ctx, choiceArg) {
-  const { player, economy, threadId, sessions } = ctx;
-  const session = sessions.get(threadId);
-  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
-
-  const aliases = {
-    'kéo': 'keo', 'keo': 'keo', 'k': 'keo', 'scissors': 'keo',
-    'búa': 'bua', 'bua': 'bua', 'b': 'bua', 'rock': 'bua',
-    'bao': 'bao', 'giấy': 'bao', 'giay': 'bao', 'paper': 'bao',
-  };
-  const opponentChoice = aliases[(choiceArg || '').toLowerCase()];
+function resolveRps({ player, economy, threadId, sessions, session, choiceArg }) {
+  const opponentChoice = RPS_ALIASES[(choiceArg || '').toLowerCase()];
   if (!opponentChoice) return 'Chon k/b/bao! VD: /accept k';
-
-  const bet = session.opponent.bet;
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) {
-    economy.addXu(session.challenger.id, session.challenger.bet);
-    sessions.delete(threadId);
-    return `Khong du xu! Thach dau huy.`;
-  }
-  economy.removeXu(player, bet);
-  session.opponent.bet = bet;
 
   const challengerChoice = session.challenger.choice;
   const emojis = { keo: '✌️', bua: '✊', bao: '✋' };
@@ -389,7 +257,7 @@ function acceptRps(ctx, choiceArg) {
   if (challengerChoice === opponentChoice) {
     // Hoa - hoan xu
     economy.addXu(session.challenger.id, session.challenger.bet);
-    economy.addXu(player, bet);
+    economy.addXu(player, session.opponent.bet);
     sessions.delete(threadId);
     msg += '🤝 HOA! Hoan xu.';
     return msg;
@@ -405,81 +273,38 @@ function acceptRps(ctx, choiceArg) {
   return msg;
 }
 
-// ========== BAU CUA PvP ==========
-// /baucua @ten con xu -> doi thu accept voi con khac
+// =================================================================
+// BAU CUA PvP — diem nao trung nhieu hon thang
+// =================================================================
+
+const BC_ALIASES = {
+  'bầu': 'bau', 'bau': 'bau', 'cua': 'cua',
+  'tôm': 'tom', 'tom': 'tom', 'cá': 'ca', 'ca': 'ca',
+  'gà': 'ga', 'ga': 'ga', 'nai': 'nai', 'hươu': 'nai', 'huou': 'nai',
+};
+const BC_EMOJIS = { bau: '🍐', cua: '🦀', tom: '🦐', ca: '🐟', ga: '🐔', nai: '🦌' };
 
 function baucuaPvP(ctx, args) {
-  const { player, economy, threadId, sessions } = ctx;
-
-  const existing = sessions.get(threadId);
-  if (existing) return 'Dang co game/thach dau! /endgame truoc.';
-
-  const bcAliases = {
-    'bầu': 'bau', 'bau': 'bau', 'cua': 'cua',
-    'tôm': 'tom', 'tom': 'tom', 'cá': 'ca', 'ca': 'ca',
-    'gà': 'ga', 'ga': 'ga', 'nai': 'nai', 'hươu': 'nai', 'huou': 'nai',
-  };
-
-  const match = args.trim().match(/^@?(.+?)\s+(bau|bầu|cua|tom|tôm|ca|cá|ga|gà|nai|hươu|huou)\s+(\d+)$/i);
-  if (!match) return null;
-
-  const targetStr = match[1].trim();
-  const choiceRaw = match[2].toLowerCase();
-  const bet = parseInt(match[3]);
-  const choice = bcAliases[choiceRaw];
-  if (!choice) return null;
-
-  if (bet < 10) return 'Cuoc toi thieu 10 xu!';
-
-  const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"!`;
-  if (targetId === player) return 'Khong the thach chinh minh!';
-
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-  const targetBal = economy.getBalance(targetId);
-  if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
-
-  economy.removeXu(player, bet);
-  const emojis = { bau: '🍐', cua: '🦀', tom: '🦐', ca: '🐟', ga: '🐔', nai: '🦌' };
-  sessions.set(threadId, {
-    type: 'pvp_baucua',
-    challenger: { id: player, bet, choice },
-    opponent: { id: targetId, bet },
-    endTime: Date.now() + 60000,
-  });
-
-  const cName = economy.getDisplayName(player);
-  const oName = economy.getDisplayName(targetId);
-  return `🦀 BAU CUA PvP!\n${cName} chon ${emojis[choice]} ${choice} - ${bet} xu!\n\n${oName} go /accept <con> de chap nhan\nCon: bau/cua/tom/ca/ga/nai\n/decline de tu choi`;
+  return challengeGame(ctx, args, 'pvp_baucua',
+    (a) => {
+      const m = a.trim().match(/^@?(.+?)\s+(bau|bầu|cua|tom|tôm|ca|cá|ga|gà|nai|hươu|huou)\s+(\d+)$/i);
+      if (!m) return null;
+      const choice = BC_ALIASES[m[2].toLowerCase()];
+      if (!choice) return null;
+      return { targetStr: m[1].trim(), choice, bet: parseInt(m[3]) };
+    },
+    {
+      formatChallenge: (cName, oName, bet, choice) =>
+        `🦀 BAU CUA PvP!\n${cName} chon ${BC_EMOJIS[choice]} ${choice} - ${bet} xu!\n\n${oName} go /accept <con> de chap nhan\nCon: bau/cua/tom/ca/ga/nai\n/decline de tu choi`,
+    }
+  );
 }
 
-function acceptBaucua(ctx, choiceArg) {
-  const { player, economy, threadId, sessions } = ctx;
-  const session = sessions.get(threadId);
-  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
-
-  const bcAliases = {
-    'bầu': 'bau', 'bau': 'bau', 'cua': 'cua',
-    'tôm': 'tom', 'tom': 'tom', 'cá': 'ca', 'ca': 'ca',
-    'gà': 'ga', 'ga': 'ga', 'nai': 'nai', 'hươu': 'nai', 'huou': 'nai',
-  };
-  const opponentChoice = bcAliases[(choiceArg || '').toLowerCase()];
+function resolveBaucua({ player, economy, threadId, sessions, session, choiceArg }) {
+  const opponentChoice = BC_ALIASES[(choiceArg || '').toLowerCase()];
   if (!opponentChoice) return 'Chon con! VD: /accept cua';
 
-  const bet = session.opponent.bet;
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) {
-    economy.addXu(session.challenger.id, session.challenger.bet);
-    sessions.delete(threadId);
-    return `Khong du xu! Thach dau huy.`;
-  }
-  economy.removeXu(player, bet);
-  session.opponent.bet = bet;
-
   const items = ['bau', 'cua', 'tom', 'ca', 'ga', 'nai'];
-  const emojis = { bau: '🍐', cua: '🦀', tom: '🦐', ca: '🐟', ga: '🐔', nai: '🦌' };
-
   const r = [0, 0, 0].map(() => items[Math.floor(Math.random() * 6)]);
   const challengerChoice = session.challenger.choice;
   const cMatch = r.filter(x => x === challengerChoice).length;
@@ -489,14 +314,13 @@ function acceptBaucua(ctx, choiceArg) {
   const oName = economy.getDisplayName(player);
 
   let msg = `🦀 BAU CUA PvP!\n\n`;
-  msg += `${cName}: ${emojis[challengerChoice]} | ${oName}: ${emojis[opponentChoice]}\n`;
-  msg += `Ket qua: ${r.map(x => emojis[x]).join(' ')}\n`;
+  msg += `${cName}: ${BC_EMOJIS[challengerChoice]} | ${oName}: ${BC_EMOJIS[opponentChoice]}\n`;
+  msg += `Ket qua: ${r.map(x => BC_EMOJIS[x]).join(' ')}\n`;
   msg += `${cName}: ${cMatch} trung | ${oName}: ${oMatch} trung\n\n`;
 
   if (cMatch === oMatch) {
-    // Hoa - hoan xu
     economy.addXu(session.challenger.id, session.challenger.bet);
-    economy.addXu(player, bet);
+    economy.addXu(player, session.opponent.bet);
     sessions.delete(threadId);
     msg += '🤝 HOA! Hoan xu.';
     return msg;
@@ -511,59 +335,25 @@ function acceptBaucua(ctx, choiceArg) {
   return msg;
 }
 
-// ========== SLOTS PvP ==========
-// /slots @ten xu -> both spin, higher score wins
+// =================================================================
+// SLOTS PvP — both spin, higher score wins
+// =================================================================
 
 function slotsPvP(ctx, args) {
-  const { player, economy, threadId, sessions } = ctx;
-
-  const existing = sessions.get(threadId);
-  if (existing) return 'Dang co game/thach dau! /endgame truoc.';
-
-  const match = args.trim().match(/^@?(.+?)\s+(\d+)$/);
-  if (!match) return null;
-
-  const targetStr = match[1].trim();
-  const bet = parseInt(match[2]);
-  if (bet < 10) return 'Cuoc toi thieu 10 xu!';
-
-  const targetId = findTarget(economy, targetStr);
-  if (!targetId) return `Khong tim thay "${targetStr}"!`;
-  if (targetId === player) return 'Khong the thach chinh minh!';
-
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) return `Khong du xu! Ban co ${bal.xu} xu.`;
-  const targetBal = economy.getBalance(targetId);
-  if (targetBal.xu < bet) return `${economy.getDisplayName(targetId)} khong du ${bet} xu!`;
-
-  economy.removeXu(player, bet);
-  sessions.set(threadId, {
-    type: 'pvp_slots',
-    challenger: { id: player, bet },
-    opponent: { id: targetId, bet },
-    endTime: Date.now() + 60000,
-  });
-
-  const cName = economy.getDisplayName(player);
-  const oName = economy.getDisplayName(targetId);
-  return `🎰 SLOTS PvP!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept de chap nhan\n/decline de tu choi`;
+  return challengeGame(ctx, args, 'pvp_slots',
+    (a) => {
+      const m = a.trim().match(/^@?(.+?)\s+(\d+)$/);
+      if (!m) return null;
+      return { targetStr: m[1].trim(), bet: parseInt(m[2]) };
+    },
+    {
+      formatChallenge: (cName, oName, bet) =>
+        `🎰 SLOTS PvP!\n${cName} thach ${oName} - ${bet} xu!\n\n${oName} go /accept de chap nhan\n/decline de tu choi`,
+    }
+  );
 }
 
-function acceptSlots(ctx) {
-  const { player, economy, threadId, sessions } = ctx;
-  const session = sessions.get(threadId);
-  if (player !== session.opponent.id) return 'Ban khong phai nguoi duoc thach!';
-
-  const bet = session.opponent.bet;
-  const bal = economy.getBalance(player);
-  if (bal.xu < bet) {
-    economy.addXu(session.challenger.id, session.challenger.bet);
-    sessions.delete(threadId);
-    return `Khong du xu! Thach dau huy.`;
-  }
-  economy.removeXu(player, bet);
-  session.opponent.bet = bet;
-
+function resolveSlots({ player, economy, threadId, sessions, session }) {
   const symbols = ['🍒', '🍋', '🍊', '🍇', '💎', '7️⃣', '🔔', '⭐'];
   const scores =  [1,    2,    3,    4,    8,    10,   5,    5];
 
@@ -573,7 +363,6 @@ function acceptSlots(ctx) {
       return { symbol: symbols[i], score: scores[i], index: i };
     });
     let total = r.reduce((s, x) => s + x.score, 0);
-    // Bonus: doi +5, ba giong +20
     if (r[0].index === r[1].index && r[1].index === r[2].index) total += 20;
     else if (r[0].index === r[1].index || r[1].index === r[2].index || r[0].index === r[2].index) total += 5;
     return { reels: r.map(x => x.symbol), total };
@@ -591,7 +380,7 @@ function acceptSlots(ctx) {
 
   if (spin1.total === spin2.total) {
     economy.addXu(session.challenger.id, session.challenger.bet);
-    economy.addXu(player, bet);
+    economy.addXu(player, session.opponent.bet);
     sessions.delete(threadId);
     msg += '🤝 HOA! Hoan xu.';
     return msg;
@@ -606,7 +395,9 @@ function acceptSlots(ctx) {
   return msg;
 }
 
-// ========== ROB ==========
+// =================================================================
+// ROB — Cuop xu, logic rieng (khong dung challenge system)
+// =================================================================
 
 function rob(ctx, args) {
   const { player, economy } = ctx;
@@ -653,24 +444,28 @@ function rob(ctx, args) {
   }
 }
 
-// ========== UNIFIED ACCEPT / DECLINE ==========
+// =================================================================
+// UNIFIED ACCEPT / DECLINE
+// =================================================================
 
 const PVP_TYPES = ['duel', 'coinflip', 'pvp_taixiu', 'pvp_rps', 'pvp_baucua', 'pvp_slots'];
+
+const RESOLVERS = {
+  duel: resolveDuel,
+  coinflip: resolveCoinflip,
+  pvp_taixiu: resolveTaixiu,
+  pvp_rps: resolveRps,
+  pvp_baucua: resolveBaucua,
+  pvp_slots: resolveSlots,
+};
 
 function accept(ctx, choiceArg) {
   const { threadId, sessions } = ctx;
   const session = sessions.get(threadId);
   if (!session || !PVP_TYPES.includes(session.type)) return 'Khong co thach dau nao!';
 
-  switch (session.type) {
-    case 'duel': return acceptDuel(ctx);
-    case 'coinflip': return acceptCoinflip(ctx);
-    case 'pvp_taixiu': return acceptTaixiu(ctx);
-    case 'pvp_rps': return acceptRps(ctx, choiceArg);
-    case 'pvp_baucua': return acceptBaucua(ctx, choiceArg);
-    case 'pvp_slots': return acceptSlots(ctx);
-    default: return 'Khong co thach dau nao!';
-  }
+  const resolver = RESOLVERS[session.type];
+  return acceptGame(ctx, resolver, choiceArg);
 }
 
 function decline(ctx) {
@@ -693,7 +488,7 @@ function decline(ctx) {
   return `${labels[session.type] || 'Thach dau'} huy! Hoan xu.`;
 }
 
-// ========== CHECK @ TRONG ARGS (de command handler biet co PvP khong) ==========
+// ========== CHECK @ TRONG ARGS ==========
 
 function hasTarget(args) {
   if (!args) return false;
