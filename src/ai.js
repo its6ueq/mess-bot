@@ -6,6 +6,21 @@ class AIChat {
     this.maxHistory = 20;
     this.baseUrl = config.lmStudioUrl || 'http://localhost:1234/v1';
     this.detectedModel = null; // auto-detect tu LM Studio
+    // Uu tien DeepSeek neu co API key
+    this.useDeepSeek = !!config.deepseekApiKey;
+    if (this.useDeepSeek) console.log(`[AI] Dung DeepSeek: ${config.deepseekModel}`);
+  }
+
+  // Endpoint chat completions theo provider
+  chatEndpoint() {
+    if (this.useDeepSeek) return config.deepseekUrl.replace(/\/$/, '') + '/chat/completions';
+    return this.getApiUrl() + '/chat/completions';
+  }
+
+  authHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (this.useDeepSeek) h['Authorization'] = `Bearer ${config.deepseekApiKey}`;
+    return h;
   }
 
   buildSystemPrompt() {
@@ -92,31 +107,33 @@ QUY TẮC:
   }
 
   getModel() {
+    if (this.useDeepSeek) return config.deepseekModel;
     return config.lmStudioModel || this.detectedModel || 'default';
   }
 
   async callLMStudio(messages, options = {}) {
     try {
-      // Auto-detect model lan dau
-      if (!this.detectedModel) await this.detectModel();
+      // LM Studio can auto-detect model; DeepSeek thi khong
+      if (!this.useDeepSeek && !this.detectedModel) await this.detectModel();
 
       const payload = {
         model: this.getModel(),
-        messages: this.convertSystemToUser(messages),
+        // DeepSeek ho tro role "system" -> giu nguyen; LM Studio thi doi sang user
+        messages: this.useDeepSeek ? messages : this.convertSystemToUser(messages),
         temperature: options.temperature || 0.7,
         max_tokens: options.maxTokens || 1024,
         stream: false,
       };
 
-      const response = await fetch(this.getApiUrl() + '/chat/completions', {
+      const response = await fetch(this.chatEndpoint(), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: this.authHeaders(),
         body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[AI] LM Studio ${response.status}:`, errorText.substring(0, 200));
+        console.error(`[AI] ${this.useDeepSeek ? 'DeepSeek' : 'LM Studio'} ${response.status}:`, errorText.substring(0, 200));
         return null;
       }
 
@@ -174,6 +191,11 @@ QUY TẮC:
 
   async checkHealth() {
     try {
+      if (this.useDeepSeek) {
+        const r = await fetch(config.deepseekUrl.replace(/\/$/, '') + '/models', { headers: this.authHeaders() });
+        if (r.ok) { const d = await r.json(); return { online: true, models: (d.data || []).map(m => m.id) }; }
+        return { online: false, models: [] };
+      }
       const response = await fetch(this.getApiUrl() + '/models');
       if (response.ok) {
         const data = await response.json();

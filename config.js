@@ -65,6 +65,11 @@ module.exports = {
   lmStudioUrl: process.env.LM_STUDIO_URL || 'http://127.0.0.1:1234',
   lmStudioModel: process.env.LM_STUDIO_MODEL || '',  // empty = auto-detect
 
+  // DeepSeek V4 (OpenAI-compatible). Neu co API key -> uu tien dung DeepSeek.
+  deepseekApiKey: process.env.DEEPSEEK_API_KEY || '',
+  deepseekUrl: process.env.DEEPSEEK_URL || 'https://api.deepseek.com',
+  deepseekModel: process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash',
+
   // Polling
   pollInterval: parseInt(process.env.POLL_INTERVAL) || 3000,
 
