@@ -356,13 +356,13 @@ class Bot {
 
           try {
             const messages = await domReader.readMessages(tab.page, 30, threadId, tab.isGroup);
-            if (!messages.length) { console.log(`[R] ${tab.name}: 0 msgs`); continue; }
+            if (!messages.length) { if (process.env.DEBUG_READ) console.log(`[R] ${tab.name}: 0 msgs`); continue; }
 
-            // DBG: log 2 tin cuoi (ca isOutgoing raw)
-            const tail = messages.slice(-2);
-            for (const m of tail) {
-              const age = Math.round((Date.now() - m.timestamp) / 1000);
-              console.log(`[R] "${m.text.substring(0,12)}" sid=${m.senderId} isMe=${m.isMe} raw=${JSON.stringify(m._dbg)}`);
+            // DBG: log 2 tin cuoi (chi khi DEBUG_READ=1)
+            if (process.env.DEBUG_READ) {
+              for (const m of messages.slice(-2)) {
+                console.log(`[R] "${m.text.substring(0,12)}" sid=${m.senderId} isMe=${m.isMe} raw=${JSON.stringify(m._dbg)}`);
+              }
             }
 
             const newMsgs = this.findNewMessages(messages, threadId);

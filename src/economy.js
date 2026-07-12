@@ -257,6 +257,7 @@ class Economy {
     msg += `Cá đã bắt: ${p.fishCaught}\n`;
     msg += `Games: ${p.gamesPlayed} (thắng ${p.gamesWon}, ${winRate}%)\n`;
     msg += `Kho: ${p.inventory.length} items`;
+    if (p.spouse) msg += `\n💍 Đã kết hôn với: ${this.getDisplayName(p.spouse)}`;
     return msg;
   }
 
@@ -403,6 +404,33 @@ class Economy {
     p.gamesPlayed++;
     if (won) p.gamesWon++;
     this._save();
+  }
+
+  // ─── KẾT HÔN ─────────────────────────────────────────
+  marry(fromId, toId) {
+    if (fromId === toId) return 'Không thể tự cưới chính mình được đâu! 😅';
+    const a = this.getPlayer(fromId);
+    const b = this.getPlayer(toId);
+    if (a.spouse) return `Bạn đã kết hôn với ${this.getDisplayName(a.spouse)} rồi! Gõ /divorce trước.`;
+    if (b.spouse) return `${b.displayName} đã có gia đình rồi! 💔`;
+    a.spouse = toId;
+    a.marriedAt = new Date().toISOString();
+    b.spouse = fromId;
+    b.marriedAt = a.marriedAt;
+    this._save();
+    return `💍 ${a.displayName} ❤️ ${b.displayName}\nChúc mừng cặp đôi mới cưới! 🎉`;
+  }
+
+  divorce(id) {
+    const p = this.getPlayer(id);
+    if (!p.spouse) return 'Bạn đang độc thân mà! 🙃';
+    const exId = p.spouse;
+    const ex = this.players[exId];
+    const exName = this.getDisplayName(exId);
+    p.spouse = null; p.marriedAt = null;
+    if (ex) { ex.spouse = null; ex.marriedAt = null; }
+    this._save();
+    return `💔 ${p.displayName} đã ly hôn với ${exName}. Chúc bạn sớm tìm được người mới!`;
   }
 }
 

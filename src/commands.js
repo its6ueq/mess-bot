@@ -7,6 +7,27 @@
 const config = require('../config');
 const G = require('./games/index');
 const { handleTTS } = require('./tts');
+const { getWeather } = require('./weather');
+
+// Bình chọn đang mở theo thread: threadId -> { question, options[], votes{userId:idx}, by }
+const polls = new Map();
+
+function renderPoll(poll, final) {
+  const counts = poll.options.map(() => 0);
+  for (const v of Object.values(poll.votes)) counts[v] = (counts[v] || 0) + 1;
+  const total = Object.keys(poll.votes).length;
+  let m = `${final ? '📊 KẾT QUẢ' : '🗳️'} ${poll.question}\n\n`;
+  poll.options.forEach((o, i) => {
+    const n = counts[i];
+    const pct = total ? Math.round((n / total) * 100) : 0;
+    const filled = Math.round(pct / 10);
+    const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
+    m += `${i + 1}. ${o}\n   ${bar} ${n} (${pct}%)\n`;
+  });
+  m += `\nTổng: ${total} phiếu`;
+  if (final) m += ' — Đã đóng.';
+  return m;
+}
 
 function isAdmin(senderId) {
   return config.admins.some(a => a === senderId);
@@ -306,6 +327,24 @@ register('help', {
     msg += '/cf @tên [xu] - Tung đồng xu PvP\n';
     msg += '/rob @tên - Cướp xu người khác\n';
     msg += '/accept /decline - Nhận/từ chối thách đấu\n\n';
+
+    msg += '--- Tiện Ích ---\n';
+    msg += '/thoitiet <thành phố> - Xem thời tiết\n';
+    msg += '/dich <chữ> - Dịch ngôn ngữ\n';
+    msg += '/hoi <câu hỏi> - Hỏi AI kiến thức\n';
+    msg += '/tomtat [n] - Tóm tắt hội thoại gần đây\n';
+    msg += '/calc <phép tính> - Máy tính\n';
+    msg += '/chon A | B | C - Chọn ngẫu nhiên\n';
+    msg += '/random [min max] - Số ngẫu nhiên\n';
+    msg += '/vote Câu hỏi? | A | B - Bình chọn\n';
+    msg += '/avatar [@tên] - Lấy ảnh đại diện\n\n';
+
+    msg += '--- Xã Hội ---\n';
+    msg += '/marry @tên - Cầu hôn\n';
+    msg += '/divorce - Ly hôn\n';
+    msg += '/roast @tên - Cà khịa (AI)\n';
+    msg += '/khen @tên - Khen ngợi (AI)\n';
+    msg += '💬 Tag @Bot trong nhóm để trò chuyện với AI\n\n';
 
     msg += '--- Khác ---\n';
     msg += '/dice /flip /d20 - Xúc xắc, tung xu\n';
@@ -607,6 +646,98 @@ register('emoji', {
 
 register('card', {
   handler: () => G.misc.cardBattle(),
+});
+
+// ─── TIỆN ÍCH & XÃ HỘI ─────────────────────────────────
+register('thoitiet', {
+  aliases: ['weather', 'tt'],
+  handler: (a) => getWeather(a || ''),   // async -> tra ve Promise<string>
+});
+
+register('chon', {
+  aliases: ['pick'],
+  handler: (a) => {
+    const arg = (a || '').trim();
+    if (!arg) return 'Cho mình vài lựa chọn nhé: /chon Phở | Bún | Cơm  (hoặc ngăn bằng dấu phẩy)';
+    const opts = arg.split(/\||,|;/).map(s => s.trim()).filter(Boolean);
+    if (opts.length < 2) return 'Cần ít nhất 2 lựa chọn nhé!';
+    return `🎯 Mình chọn: ${opts[Math.floor(Math.random() * opts.length)]}`;
+  },
+});
+
+register('random', {
+  aliases: ['rand'],
+  handler: (a) => {
+    const nums = (a || '').trim().split(/\s+/).map(Number).filter(n => !isNaN(n));
+    let min = 1, max = 100;
+    if (nums.length === 1) max = nums[0];
+    else if (nums.length >= 2) { min = nums[0]; max = nums[1]; }
+    if (min > max) [min, max] = [max, min];
+    const r = Math.floor(Math.random() * (max - min + 1)) + min;
+    return `🎲 Số ngẫu nhiên (${min}–${max}): ${r}`;
+  },
+});
+
+register('calc', {
+  aliases: ['tinh'],
+  handler: (a) => {
+    const expr = (a || '').trim();
+    if (!expr) return 'Nhập phép tính: /calc 2 + 2 * 3';
+    if (!/^[0-9+\-*/(). %]+$/.test(expr)) return 'Chỉ hỗ trợ số và + - * / ( ) % thôi nhé!';
+    try {
+      const r = Function('"use strict";return (' + expr + ')')();
+      if (typeof r !== 'number' || !isFinite(r)) return 'Phép tính không hợp lệ!';
+      return `🧮 ${expr} = ${Math.round(r * 1e6) / 1e6}`;
+    } catch { return 'Phép tính không hợp lệ!'; }
+  },
+});
+
+register('vote', {
+  aliases: ['poll', 'binhchon'],
+  handler: (a, ctx) => {
+    const arg = (a || '').trim();
+    const poll = polls.get(ctx.threadId);
+    if (!arg) {
+      return poll ? renderPoll(poll)
+        : 'Tạo bình chọn: /vote Câu hỏi? | Lựa chọn 1 | Lựa chọn 2\nBỏ phiếu: /vote <số>  •  Kết thúc: /vote ket';
+    }
+    if (/^(ket|end|xong|dong|close)$/i.test(arg)) {
+      if (!poll) return 'Không có bình chọn nào đang mở!';
+      const res = renderPoll(poll, true);
+      polls.delete(ctx.threadId);
+      return res;
+    }
+    if (/^\d+$/.test(arg)) {
+      if (!poll) return 'Chưa có bình chọn nào! Tạo: /vote Câu hỏi? | A | B';
+      const idx = parseInt(arg) - 1;
+      if (idx < 0 || idx >= poll.options.length) return `Chọn số từ 1 đến ${poll.options.length}!`;
+      poll.votes[ctx.senderId] = idx;
+      return `✅ ${ctx.sender} đã bình chọn "${poll.options[idx]}".\n\n` + renderPoll(poll);
+    }
+    if (arg.includes('|')) {
+      const parts = arg.split('|').map(s => s.trim()).filter(Boolean);
+      const question = parts.shift();
+      if (parts.length < 2) return 'Cần ít nhất 2 lựa chọn! VD: /vote Ăn gì? | Phở | Bún | Cơm';
+      polls.set(ctx.threadId, { question, options: parts.slice(0, 10), votes: {}, by: ctx.sender });
+      return `🗳️ BÌNH CHỌN:\n${question}\n\n` + parts.slice(0, 10).map((o, i) => `${i + 1}. ${o}`).join('\n') + `\n\nBỏ phiếu: /vote <số>`;
+    }
+    return 'Sai cú pháp! Tạo: /vote Câu hỏi? | A | B  •  Bỏ phiếu: /vote <số>';
+  },
+});
+
+register('marry', {
+  aliases: ['kethon', 'cuoi'],
+  handler: (a, ctx) => {
+    if (!a || !a.trim()) return 'Cầu hôn ai đó: /marry @tên';
+    const t = resolveTarget(a.trim());
+    if (!t) return `Không tìm thấy "${a.trim()}"! Người đó cần tương tác với bot trước.`;
+    return G.economy.marry(ctx.senderId, t.id);
+  },
+});
+
+register('divorce', {
+  aliases: ['lyhon'],
+  handler: (a, ctx) => G.economy.divorce(ctx.senderId),
 });
 
 // ─── TTS ───────────────────────────────────────────────

@@ -168,6 +168,19 @@ QUY TẮC:
     return 'AI khong tra loi duoc.';
   }
 
+  // Hoi AI mot cau bat ky (khong persona Miku). Dung cho /dich /hoi /tomtat /roast /khen.
+  async ask(systemPrompt, userPrompt, options = {}) {
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      { role: 'user', content: userPrompt },
+    ];
+    const reply = await this.callLMStudio(messages, {
+      temperature: options.temperature ?? 0.7,
+      maxTokens: options.maxTokens ?? 1024,
+    });
+    return reply ? reply.substring(0, 2000) : null;
+  }
+
   // Review code
   async reviewCode(code, lang) {
     const messages = [
