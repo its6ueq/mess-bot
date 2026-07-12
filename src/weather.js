@@ -16,7 +16,9 @@ const WMO = {
   71: ['Tuyết nhẹ', '🌨️'], 73: ['Tuyết', '❄️'], 75: ['Tuyết dày', '❄️'], 77: ['Hạt tuyết', '❄️'],
   80: ['Mưa rào nhẹ', '🌦️'], 81: ['Mưa rào', '🌧️'], 82: ['Mưa rào dữ dội', '⛈️'],
   85: ['Tuyết rào nhẹ', '🌨️'], 86: ['Tuyết rào', '🌨️'],
-  95: ['Dông', '⛈️'], 96: ['Dông (có thể mưa đá)', '⛈️'], 99: ['Dông mạnh (có thể mưa đá)', '⛈️'],
+  // Lưu ý: mã 96/99 (dông kèm mưa đá) chỉ được dự báo ở Trung Âu.
+  // Ngoài khu vực đó (vd Việt Nam) coi như dông mạnh, KHÔNG hiển thị "mưa đá".
+  95: ['Dông', '⛈️'], 96: ['Dông mạnh', '⛈️'], 99: ['Dông rất mạnh', '⛈️'],
 };
 
 function desc(code) {
