@@ -206,6 +206,7 @@ register('setxu', {
 // ─── USER COMMANDS ─────────────────────────────────────
 
 register('help', {
+  aliases: ['menu', 'lenh', 'giupdo'],
   handler: (args, ctx) => {
     const topic = (args || '').trim().toLowerCase();
 
@@ -357,7 +358,8 @@ register('help', {
       msg += '💡 Trong nhóm: gõ lệnh bắt đầu bằng /  (VD: /daily)\n';
     }
     msg += 'Gõ /help <tên game> để xem chi tiết.\n';
-    msg += 'VD: /help xoso, /help blackjack, /help rob';
+    msg += 'VD: /help xoso, /help blackjack, /help rob\n';
+    msg += '⚡ Viết tắt: /p /dl /lam /pf /z /gem /wd /ck /tt ...';
 
     if (isAdmin(ctx.senderId)) {
       msg += '\n\n--- Admin ---\n';
@@ -371,27 +373,33 @@ register('help', {
 });
 
 register('ping', {
+  aliases: ['p'],
   handler: () => `Pong! (${new Date().toLocaleTimeString('vi-VN')})`,
 });
 
 register('myid', {
+  aliases: ['id'],
   handler: (a, ctx) => `ID cua ban: ${ctx.senderId}\nTen: ${ctx.sender}`,
 });
 
 // ─── ECONOMY ───────────────────────────────────────────
 register('daily', {
+  aliases: ['dl'],
   handler: (a, ctx) => G.economy.daily(ctx.senderId),
 });
 
 register('checkin', {
+  aliases: ['diemdanh', 'dd'],
   handler: (a, ctx) => G.misc.checkin(G.economy, ctx.senderId),
 });
 
 register('work', {
+  aliases: ['lam', 'lamviec', 'w'],
   handler: (a, ctx) => G.economy.work(ctx.senderId),
 });
 
 register('profile', {
+  aliases: ['pf', 'hoso', 'me'],
   handler: (a, ctx) => {
     if (a?.trim()) {
       const target = resolveTarget(a.trim());
@@ -411,10 +419,12 @@ register('balance', {
 });
 
 register('deposit', {
+  aliases: ['gui', 'nap'],
   handler: (a, ctx) => G.economy.deposit(ctx.senderId, a?.trim() || 'all'),
 });
 
 register('withdraw', {
+  aliases: ['rut'],
   handler: (a, ctx) => G.economy.withdraw(ctx.senderId, a?.trim() || 'all'),
 });
 
@@ -423,6 +433,7 @@ register('top', {
 });
 
 register('transfer', {
+  aliases: ['ck', 'chuyen', 'give'],
   handler: (a, ctx) => {
     if (!a) return 'Nhan /transfer @ten <so xu>\nVD: /transfer @Nguyen Duy 100';
 
@@ -454,6 +465,7 @@ register('transfer', {
 
 // ─── SESSION GAMES ─────────────────────────────────────
 register('wordle', {
+  aliases: ['wd'],
   handler: (a, ctx) => {
     if (G.hasActiveGame(ctx.threadId)) return 'Dang co game! /endgame truoc.';
     return G.wordle.start({ threadId: ctx.threadId, player: ctx.senderId, economy: G.economy, sessions: G.sessions });
@@ -567,14 +579,17 @@ register('halbum', {
 
 // ─── ZOO / TEAM / GEMS / LOOTBOX / BATTLE ─────────────
 register('zoo', {
+  aliases: ['z', 'thu', 'sothu'],
   handler: (a, ctx) => G.zoo.zoo({ player: ctx.senderId, economy: G.economy }, a),
 });
 
 register('team', {
+  aliases: ['doi', 'tm'],
   handler: (a, ctx) => G.zoo.team({ player: ctx.senderId, economy: G.economy }, a),
 });
 
 register('zsell', {
+  aliases: ['banthu'],
   handler: (a, ctx) => G.zoo.zooSell({ player: ctx.senderId, economy: G.economy }, a),
 });
 
@@ -587,10 +602,12 @@ register('wremove', {
 });
 
 register('weapons', {
+  aliases: ['wp', 'vukhi'],
   handler: (a, ctx) => G.zoo.weapons({ player: ctx.senderId, economy: G.economy }),
 });
 
 register('gems', {
+  aliases: ['gem', 'da'],
   handler: (a, ctx) => G.gems.gems({ player: ctx.senderId, economy: G.economy }),
 });
 
@@ -603,10 +620,12 @@ register('gemremove', {
 });
 
 register('open', {
+  aliases: ['mo'],
   handler: (a, ctx) => G.lootbox.open({ player: ctx.senderId, economy: G.economy }, a),
 });
 
 register('crates', {
+  aliases: ['crate', 'ruong'],
   handler: (a, ctx) => G.lootbox.crates({ player: ctx.senderId, economy: G.economy }),
 });
 
@@ -617,10 +636,12 @@ register('battle', {
 
 // ─── MISC GAMES ────────────────────────────────────────
 register('dice', {
+  aliases: ['xucxac', 'roll'],
   handler: (a) => G.misc.dice(a),
 });
 
 register('flip', {
+  aliases: ['tung'],
   handler: () => G.misc.flip(),
 });
 
@@ -749,6 +770,7 @@ register('tts', {
 });
 
 register('endgame', {
+  aliases: ['end', 'ketthuc', 'huy'],
   handler: (a, ctx) => {
     if (G.hasActiveGame(ctx.threadId)) {
       G.endGame(ctx.threadId);

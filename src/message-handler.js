@@ -218,8 +218,8 @@ async function processMessage(msg, threadId, isGroup, tabPage, bot) {
     }
 
     // AI commands
-    if (cmd === 'chat') return await bot.handleAIChat(threadId, parsed.args, msg.sender);
-    if (cmd === 'clearchat') return bot.ai.clearHistory(threadId);
+    if (cmd === 'chat' || cmd === 'ai' || cmd === 'c') return await bot.handleAIChat(threadId, parsed.args, msg.sender);
+    if (cmd === 'clearchat' || cmd === 'xoachat') return bot.ai.clearHistory(threadId);
     if (cmd === 'code') return await bot.handleCode(parsed.args);
 
     // TTS command - can tabPage de gui file
