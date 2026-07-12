@@ -8,6 +8,7 @@ const config = require('../config');
 const G = require('./games/index');
 const { handleTTS } = require('./tts');
 const { getWeather } = require('./weather');
+const { getConcept } = require('./wiki');
 
 // Bình chọn đang mở theo thread: threadId -> { question, options[], votes{userId:idx}, by }
 const polls = new Map();
@@ -331,6 +332,7 @@ register('help', {
 
     msg += '--- Tiện Ích ---\n';
     msg += '/thoitiet <thành phố> - Xem thời tiết\n';
+    msg += '/khainiem <từ khoá> - Tra Wikipedia\n';
     msg += '/dich <chữ> - Dịch ngôn ngữ\n';
     msg += '/hoi <câu hỏi> - Hỏi AI kiến thức\n';
     msg += '/tomtat [n] - Tóm tắt hội thoại gần đây\n';
@@ -673,6 +675,11 @@ register('card', {
 register('thoitiet', {
   aliases: ['weather', 'tt'],
   handler: (a) => getWeather(a || ''),   // async -> tra ve Promise<string>
+});
+
+register('khainiem', {
+  aliases: ['wiki', 'kn', 'dinhnghia'],
+  handler: (a) => getConcept(a || ''),   // async -> Promise<string>
 });
 
 register('chon', {
