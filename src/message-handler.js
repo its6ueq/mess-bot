@@ -5,7 +5,36 @@
 // ============================================================
 
 const config = require('../config');
-const { handleCommand, checkAutoReply, games } = require('./commands');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+const { handleCommand, checkAutoReply, games, resolveTarget } = require('./commands');
+
+// Bot có bị nhắc tới (tag) trong tin không?
+function botAddressed(msg) {
+  const botId = String(config.myId || '');
+  if (botId && Array.isArray(msg.mentions) && msg.mentions.some(m => m && String(m.id) === botId)) return true;
+  const bn = (config.botName || 'Bot').toLowerCase();
+  return (msg.text || '').toLowerCase().includes('@' + bn);
+}
+
+// Bỏ phần "@Tên bot" khỏi text để đưa nội dung sạch cho AI
+function stripBotMention(msg) {
+  let clean = msg.text || '';
+  const bm = (msg.mentions || []).find(m => String(m.id) === String(config.myId));
+  if (bm && bm.name) clean = clean.split(bm.name).join(' ');
+  return clean.replace(/@\S+/g, '').replace(/\s+/g, ' ').trim();
+}
+
+// Tải 1 URL (vd ảnh đại diện) về file tạm để gửi qua sendFile
+async function downloadToTemp(url, name) {
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const buf = Buffer.from(await res.arrayBuffer());
+  const fp = path.join(os.tmpdir(), name);
+  fs.writeFileSync(fp, buf);
+  return fp;
+}
 
 /**
  * Parse message text into command structure.
@@ -105,6 +134,15 @@ async function processMessage(msg, threadId, isGroup, tabPage, bot) {
     return 'Bạn gửi quá nhanh! Đợi một chút nhé.';
   }
 
+  // Tag @Bot trong nhóm (không phải lệnh /) -> trò chuyện AI tự nhiên
+  if (isGroup && botAddressed(msg)) {
+    const clean = stripBotMention(msg);
+    if (clean && !clean.startsWith('/')) {
+      const r = await bot.ai.chat(threadId, clean, msg.sender);
+      if (r) return r;
+    }
+  }
+
   const parsed = parseMessage(sanitize(msg.text), isGroup);
 
   // ctx dung senderId thay vi sender name
@@ -196,6 +234,69 @@ async function processMessage(msg, threadId, isGroup, tabPage, bot) {
         return ttsResult.text || null;
       }
       return ttsResult;
+    }
+
+    // ─── AI tiện ích (dùng DeepSeek qua bot.ai.ask) ───
+    if (cmd === 'dich' || cmd === 'translate') {
+      if (!parsed.args) return 'Dịch gì nào? VD: /dich hello world';
+      const sys = 'Bạn là công cụ dịch thuật. Nếu văn bản là tiếng Việt thì dịch sang tiếng Anh, nếu là ngôn ngữ khác thì dịch sang tiếng Việt. CHỈ trả về bản dịch, không thêm giải thích, không markdown.';
+      const r = await bot.ai.ask(sys, parsed.args, { temperature: 0.3 });
+      return r || 'AI đang offline, thử lại sau nhé.';
+    }
+
+    if (cmd === 'hoi' || cmd === 'ask') {
+      if (!parsed.args) return 'Hỏi gì nào? VD: /hoi thủ đô nước Pháp là gì';
+      const sys = 'Bạn là trợ lý kiến thức thân thiện. Trả lời ngắn gọn, chính xác bằng tiếng Việt. Không dùng markdown.';
+      const r = await bot.ai.ask(sys, parsed.args, { temperature: 0.5 });
+      return r || 'AI đang offline, thử lại sau nhé.';
+    }
+
+    if (cmd === 'tomtat' || cmd === 'summary') {
+      const domReader = require('./dom-reader');
+      const n = Math.min(50, Math.max(5, parseInt(parsed.args) || 25));
+      const msgs = await domReader.readMessages(tabPage, n, threadId, isGroup);
+      if (!msgs.length) return 'Không đọc được tin nhắn để tóm tắt.';
+      const transcript = msgs.map(m => `${m.isMe ? 'Bot' : m.sender}: ${m.text}`).join('\n').substring(0, 6000);
+      const sys = 'Bạn tóm tắt hội thoại. Tóm tắt ngắn gọn các ý chính bằng tiếng Việt theo gạch đầu dòng (dùng dấu -). Không dùng markdown.';
+      const r = await bot.ai.ask(sys, `Tóm tắt cuộc trò chuyện sau:\n${transcript}`, { temperature: 0.4 });
+      return r ? `📝 TÓM TẮT (${msgs.length} tin):\n${r}` : 'AI đang offline, thử lại sau nhé.';
+    }
+
+    if (cmd === 'roast' || cmd === 'cakhia' || cmd === 'khen') {
+      let name = ctx.sender;
+      if (parsed.args && parsed.args.trim()) {
+        const t = resolveTarget(parsed.args.trim());
+        name = t ? t.displayName : parsed.args.trim().replace(/^@/, '');
+      } else if (ctx.mentions && ctx.mentions[0]) {
+        name = ctx.mentions[0].name;
+      }
+      const roast = (cmd === 'roast' || cmd === 'cakhia');
+      const sys = roast
+        ? 'Bạn là cao thủ cà khịa hài hước. Cà khịa (roast) người được nhắc tên một cách vui nhộn, châm biếm nhẹ nhàng bằng tiếng Việt, 1-2 câu. Hài hước chứ KHÔNG xúc phạm nặng, không phân biệt vùng miền/giới tính/ngoại hình thô tục. Không markdown.'
+        : 'Bạn hãy khen ngợi người được nhắc tên một cách chân thành, dễ thương và tích cực bằng tiếng Việt, 1-2 câu. Không markdown.';
+      const r = await bot.ai.ask(sys, `${roast ? 'Cà khịa' : 'Khen'} người tên "${name}".`, { temperature: 0.9 });
+      return r || 'AI đang offline, thử lại sau nhé.';
+    }
+
+    if (cmd === 'avatar' || cmd === 'avt') {
+      let target = { id: senderId, displayName: ctx.sender };
+      if (parsed.args && parsed.args.trim()) {
+        const t = resolveTarget(parsed.args.trim());
+        if (!t) return `Không tìm thấy "${parsed.args.trim()}"!`;
+        target = t;
+      } else if (ctx.mentions && ctx.mentions[0]) {
+        target = { id: ctx.mentions[0].id, displayName: ctx.mentions[0].name };
+      }
+      try {
+        const url = `https://graph.facebook.com/${target.id}/picture?width=800&height=800`;
+        const fp = await downloadToTemp(url, `avt_${target.id}.jpg`);
+        if (!fp) return 'Không tải được ảnh đại diện.';
+        await bot.sendFile(tabPage, fp);
+        return null;
+      } catch (e) {
+        console.log('[Avatar] loi:', e.message);
+        return 'Lỗi khi lấy ảnh đại diện.';
+      }
     }
 
     // Debug
