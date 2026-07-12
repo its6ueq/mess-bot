@@ -16,7 +16,7 @@ const WMO = {
   71: ['Tuyết nhẹ', '🌨️'], 73: ['Tuyết', '❄️'], 75: ['Tuyết dày', '❄️'], 77: ['Hạt tuyết', '❄️'],
   80: ['Mưa rào nhẹ', '🌦️'], 81: ['Mưa rào', '🌧️'], 82: ['Mưa rào dữ dội', '⛈️'],
   85: ['Tuyết rào nhẹ', '🌨️'], 86: ['Tuyết rào', '🌨️'],
-  95: ['Dông', '⛈️'], 96: ['Dông kèm mưa đá', '⛈️'], 99: ['Dông kèm mưa đá lớn', '⛈️'],
+  95: ['Dông', '⛈️'], 96: ['Dông (có thể mưa đá)', '⛈️'], 99: ['Dông mạnh (có thể mưa đá)', '⛈️'],
 };
 
 function desc(code) {
