@@ -9,6 +9,7 @@ const G = require('./games/index');
 const { handleTTS } = require('./tts');
 const { getWeather } = require('./weather');
 const { getConcept } = require('./wiki');
+const fun = require('./fun');
 
 // Bình chọn đang mở theo thread: threadId -> { question, options[], votes{userId:idx}, by }
 const polls = new Map();
@@ -293,8 +294,8 @@ register('help', {
     let msg = '📖 LỆNH BOT:\n\n';
     msg += '--- Chung ---\n';
     msg += '/help /ping /myid\n';
-    msg += '/chat <lời nhắn> - Trò chuyện với AI\n';
-    msg += '/code <mô tả> - AI viết code\n';
+    msg += '/chat <lời nhắn> - Trò chuyện với Miku\n';
+    msg += '/code <mô tả> - Miku viết code\n';
     msg += '/tts <chữ> - Đọc thành giọng nói\n\n';
 
     msg += '--- Kinh Tế ---\n';
@@ -334,7 +335,7 @@ register('help', {
     msg += '/thoitiet <thành phố> - Xem thời tiết\n';
     msg += '/khainiem <từ khoá> - Tra Wikipedia\n';
     msg += '/dich <chữ> - Dịch ngôn ngữ\n';
-    msg += '/hoi <câu hỏi> - Hỏi AI kiến thức\n';
+    msg += '/hoi <câu hỏi> - Hỏi Miku kiến thức\n';
     msg += '/tomtat [n] - Tóm tắt hội thoại gần đây\n';
     msg += '/calc <phép tính> - Máy tính\n';
     msg += '/chon A | B | C - Chọn ngẫu nhiên\n';
@@ -342,18 +343,20 @@ register('help', {
     msg += '/vote Câu hỏi? | A | B - Bình chọn\n';
     msg += '/avatar [@tên] - Lấy ảnh đại diện\n\n';
 
-    msg += '--- Xã Hội ---\n';
-    msg += '/marry @tên - Cầu hôn\n';
-    msg += '/divorce - Ly hôn\n';
-    msg += '/roast @tên - Cà khịa (AI)\n';
-    msg += '/khen @tên - Khen ngợi (AI)\n';
-    msg += '💬 Tag @Bot trong nhóm để trò chuyện với AI\n\n';
+    msg += '--- Xã Hội & Vui ---\n';
+    msg += '/marry @tên - Cầu hôn  •  /divorce - Ly hôn\n';
+    msg += '/ghepdoi @A @B - Đo độ hợp nhau\n';
+    msg += '/choc @tên - Chọc nghẹo  •  /thinh - Thả thính\n';
+    msg += '/roast @tên - Cà khịa (Miku)\n';
+    msg += '/khen @tên - Khen ngợi (Miku)\n';
+    msg += '/tarot - Bói bài tarot (Miku)\n';
+    msg += '💬 Tag @Bot trong nhóm để trò chuyện với Miku\n\n';
 
     msg += '--- Khác ---\n';
     msg += '/dice /flip /d20 - Xúc xắc, tung xu\n';
     msg += '/8ball <câu hỏi> - Bói toán\n';
     msg += '/lucky /emoji /card /td - Vui vẻ\n';
-    msg += '/clearchat - Xoá lịch sử AI\n';
+    msg += '/clearchat - Xoá lịch sử Miku\n';
     msg += '/endgame - Kết thúc game đang chơi\n\n';
 
     if (ctx.isGroup) {
@@ -680,6 +683,41 @@ register('thoitiet', {
 register('khainiem', {
   aliases: ['wiki', 'kn', 'dinhnghia'],
   handler: (a) => getConcept(a || ''),   // async -> Promise<string>
+});
+
+register('choc', {
+  aliases: ['chocngheo', 'cakhia2', 'troll'],
+  handler: (a, ctx) => {
+    let name = ctx.sender;
+    if (ctx.mentions && ctx.mentions[0]) name = ctx.mentions[0].name;
+    else if (a && a.trim()) {
+      const t = resolveTarget(a.trim());
+      name = t ? t.displayName : a.trim().replace(/^@/, '');
+    }
+    return fun.choc(name);
+  },
+});
+
+register('thinh', {
+  aliases: ['thathinh', 'flirt'],
+  handler: () => fun.thinh(),
+});
+
+register('ghepdoi', {
+  aliases: ['ship', 'dohop', 'gd'],
+  handler: (a, ctx) => {
+    const ms = ctx.mentions || [];
+    let names = [];
+    if (ms.length >= 2) names = [ms[0].name, ms[1].name];
+    else if (ms.length === 1) names = [ctx.sender, ms[0].name];
+    else if (a && a.trim()) {
+      const parts = a.split(/\||&|,| và /i).map(s => s.trim().replace(/^@/, '')).filter(Boolean);
+      names = parts.length >= 2 ? [parts[0], parts[1]] : [ctx.sender, parts[0]];
+    } else {
+      return 'Ghép ai với ai? Tag 2 người: /ghepdoi @A @B\n(hoặc /ghepdoi Tên A | Tên B)';
+    }
+    return fun.ghepDoi(names[0], names[1]);
+  },
 });
 
 register('chon', {

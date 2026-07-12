@@ -241,14 +241,14 @@ async function processMessage(msg, threadId, isGroup, tabPage, bot) {
       if (!parsed.args) return 'Dịch gì nào? VD: /dich hello world';
       const sys = 'Bạn là công cụ dịch thuật. Nếu văn bản là tiếng Việt thì dịch sang tiếng Anh, nếu là ngôn ngữ khác thì dịch sang tiếng Việt. CHỈ trả về bản dịch, không thêm giải thích, không markdown.';
       const r = await bot.ai.ask(sys, parsed.args, { temperature: 0.3 });
-      return r || 'AI đang offline, thử lại sau nhé.';
+      return r || 'Miku đang offline, thử lại sau nhé.';
     }
 
     if (cmd === 'hoi' || cmd === 'ask') {
       if (!parsed.args) return 'Hỏi gì nào? VD: /hoi thủ đô nước Pháp là gì';
       const sys = 'Bạn là trợ lý kiến thức thân thiện. Trả lời ngắn gọn, chính xác bằng tiếng Việt. Không dùng markdown.';
       const r = await bot.ai.ask(sys, parsed.args, { temperature: 0.5 });
-      return r || 'AI đang offline, thử lại sau nhé.';
+      return r || 'Miku đang offline, thử lại sau nhé.';
     }
 
     if (cmd === 'tomtat' || cmd === 'summary') {
@@ -259,7 +259,7 @@ async function processMessage(msg, threadId, isGroup, tabPage, bot) {
       const transcript = msgs.map(m => `${m.isMe ? 'Bot' : m.sender}: ${m.text}`).join('\n').substring(0, 6000);
       const sys = 'Bạn tóm tắt hội thoại. Tóm tắt ngắn gọn các ý chính bằng tiếng Việt theo gạch đầu dòng (dùng dấu -). Không dùng markdown.';
       const r = await bot.ai.ask(sys, `Tóm tắt cuộc trò chuyện sau:\n${transcript}`, { temperature: 0.4 });
-      return r ? `📝 TÓM TẮT (${msgs.length} tin):\n${r}` : 'AI đang offline, thử lại sau nhé.';
+      return r ? `📝 TÓM TẮT (${msgs.length} tin):\n${r}` : 'Miku đang offline, thử lại sau nhé.';
     }
 
     if (cmd === 'roast' || cmd === 'cakhia' || cmd === 'khen') {
@@ -275,7 +275,27 @@ async function processMessage(msg, threadId, isGroup, tabPage, bot) {
         ? 'Bạn là cao thủ cà khịa hài hước. Cà khịa (roast) người được nhắc tên một cách vui nhộn, châm biếm nhẹ nhàng bằng tiếng Việt, 1-2 câu. Hài hước chứ KHÔNG xúc phạm nặng, không phân biệt vùng miền/giới tính/ngoại hình thô tục. Không markdown.'
         : 'Bạn hãy khen ngợi người được nhắc tên một cách chân thành, dễ thương và tích cực bằng tiếng Việt, 1-2 câu. Không markdown.';
       const r = await bot.ai.ask(sys, `${roast ? 'Cà khịa' : 'Khen'} người tên "${name}".`, { temperature: 0.9 });
-      return r || 'AI đang offline, thử lại sau nhé.';
+      return r || 'Miku đang offline, thử lại sau nhé.';
+    }
+
+    if (cmd === 'tarot' || cmd === 'rutbai' || cmd === 'boibai' || cmd === 'boi') {
+      const TAROT = [
+        ['Gã Khờ', 'The Fool', '🃏'], ['Nhà Ảo Thuật', 'The Magician', '🎩'],
+        ['Nữ Tư Tế', 'The High Priestess', '🌙'], ['Nữ Hoàng', 'The Empress', '👑'],
+        ['Hoàng Đế', 'The Emperor', '🏛️'], ['Giáo Hoàng', 'The Hierophant', '📿'],
+        ['Tình Nhân', 'The Lovers', '💕'], ['Cỗ Xe', 'The Chariot', '🐎'],
+        ['Sức Mạnh', 'Strength', '🦁'], ['Ẩn Sĩ', 'The Hermit', '🕯️'],
+        ['Bánh Xe Số Phận', 'Wheel of Fortune', '🎡'], ['Công Lý', 'Justice', '⚖️'],
+        ['Người Treo Ngược', 'The Hanged Man', '🙃'], ['Cái Chết', 'Death', '💀'],
+        ['Điều Độ', 'Temperance', '🍷'], ['Ác Quỷ', 'The Devil', '😈'],
+        ['Tòa Tháp', 'The Tower', '🗼'], ['Ngôi Sao', 'The Star', '⭐'],
+        ['Mặt Trăng', 'The Moon', '🌕'], ['Mặt Trời', 'The Sun', '☀️'],
+        ['Phán Xét', 'Judgement', '📯'], ['Thế Giới', 'The World', '🌍'],
+      ];
+      const [vi, en, e] = TAROT[Math.floor(Math.random() * TAROT.length)];
+      const sys = `Bạn là Miku - thầy bói tarot dễ thương, huyền bí pha chút hài hước. Người dùng vừa rút lá "${vi}" (${en}). Hãy luận giải NGẮN GỌN (3-4 câu) bằng tiếng Việt về tình yêu, công việc và may mắn hôm nay theo ý nghĩa lá này. Xưng "em", gọi người dùng là "Onii-chan". Không markdown.`;
+      const r = await bot.ai.ask(sys, `Rút lá ${vi} cho ${ctx.sender}.`, { temperature: 0.9 });
+      return `${e} Lá bài của Onii-chan: ${vi} (${en})\n\n${r || 'Miku đang bận xem sao, thử lại sau nhé~'}`;
     }
 
     if (cmd === 'avatar' || cmd === 'avt') {
