@@ -143,6 +143,41 @@ class Bot {
     return tabInfo;
   }
 
+  // Đăng ký chính tab đầu (mainPage) làm tab theo dõi cho thread đang mở sẵn.
+  // FB tự mở 1 cuộc trò chuyện ở cửa sổ chính -> nó bị đánh dấu ĐÃ ĐỌC nên
+  // scanUnreads không thấy -> nếu không đăng ký, tin mới ở thread đó KHÔNG ai reply.
+  async registerMainPageAsTab() {
+    try {
+      const url = this.mainPage.url();
+      const m = url.match(/\/t\/(\d+)/);
+      if (!m) { console.log('[Bot] Tab chính không mở cuộc trò chuyện nào, bỏ qua.'); return; }
+      const threadId = m[1];
+      if (this.tabs.has(threadId)) return;
+
+      const isGroup = await domReader.detectGroup(this.mainPage);
+      const name = await this.mainPage.evaluate(() => {
+        const h = document.querySelector('[role="main"] h2, [role="main"] h1');
+        return h ? h.innerText.split('\n')[0].trim() : null;
+      }).catch(() => null) || threadId;
+
+      const tabInfo = { page: this.mainPage, threadId, name, isGroup };
+      this.tabs.set(threadId, tabInfo);
+
+      // Đánh dấu tin cũ là đã xử lý (giống openTab) để không reply lại lịch sử
+      const initMsgs = await domReader.readMessages(this.mainPage, 30, threadId, isGroup);
+      const now = Date.now();
+      for (const msg of initMsgs) {
+        if (now - msg.timestamp > 60000) this.processedMsgIds.add(this.generateMsgHash(msg));
+      }
+      if (!this.getCheckpoint(threadId) && initMsgs.length > 0) {
+        this.saveCheckpoint(threadId, initMsgs[initMsgs.length - 1]);
+      }
+      console.log(`[Bot] Tab chính theo dõi: ${name} (${threadId}), init ${initMsgs.length} tin`);
+    } catch (e) {
+      console.log('[Bot] Loi dang ky tab chinh:', e.message);
+    }
+  }
+
   // Dong tab
   async closeTab(threadId) {
     const tab = this.tabs.get(threadId);
@@ -452,6 +487,9 @@ class Bot {
   async startMonitoring() {
     this.running = true;
     console.log('[Bot] Khoi dong Reader + Replier song song...');
+
+    // Đăng ký tab chính (thread đang mở sẵn) để không bỏ sót tin ở đó
+    await this.registerMainPageAsTab();
 
     // Scan sidebar lan dau, mo tab cho cac thread chua doc
     try {
