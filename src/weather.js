@@ -25,6 +25,65 @@ function desc(code) {
   return WMO[code] || ['Không rõ', '🌡️'];
 }
 
+// Bỏ tiền tố "Tỉnh/Thành phố/TP" cho gọn
+function stripPrefix(s) {
+  return String(s || '').replace(/^\s*(tỉnh|tinh|thành phố|thanh pho|tp\.?|thành)\s+/i, '').trim();
+}
+
+// Chuẩn hoá để tra bảng: bỏ dấu, thường hoá, đ->d, gộp ký tự lạ thành khoảng trắng
+function normKey(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// Nhiều tên TỈNH trùng tên xã nhỏ nơi khác -> Open-Meteo vớ nhầm (pop=0, sai vùng),
+// hoặc không có entry -> geocode trượt. Ánh xạ sang THÀNH PHỐ TỈNH LỴ (tra chuẩn, đông dân).
+// Áp dụng cho cả tên tỉnh cũ (63) lẫn tên mới sau sáp nhập (34) vì trùng tên.
+const VN_ALIAS = {
+  'an giang': 'Long Xuyên',
+  'ba ria vung tau': 'Vũng Tàu',
+  'binh duong': 'Thủ Dầu Một',
+  'binh dinh': 'Quy Nhơn',
+  'binh phuoc': 'Đồng Xoài',
+  'dak lak': 'Buôn Ma Thuột',
+  'dak nong': 'Gia Nghĩa',
+  'dong nai': 'Biên Hòa',
+  'dong thap': 'Cao Lãnh',
+  'gia lai': 'Pleiku',
+  'ha nam': 'Phủ Lý',
+  'hau giang': 'Vị Thanh',
+  'khanh hoa': 'Nha Trang',
+  'kien giang': 'Rạch Giá',
+  'lam dong': 'Da Lat',
+  'long an': 'Tân An',
+  'nghe an': 'Vinh',
+  'ninh thuan': 'Phan Rang',
+  'phu yen': 'Tuy Hòa',
+  'quang binh': 'Đồng Hới',
+  'quang nam': 'Tam Kỳ',
+  'thua thien hue': 'Huế',
+  'tien giang': 'Mỹ Tho',
+  'vinh phuc': 'Vĩnh Yên',
+  // TP.HCM và biến thể
+  'tphcm': 'Ho Chi Minh', 'tp hcm': 'Ho Chi Minh', 'hcm': 'Ho Chi Minh',
+  'sai gon': 'Ho Chi Minh', 'saigon': 'Ho Chi Minh', 'ho chi minh': 'Ho Chi Minh',
+  'thanh pho ho chi minh': 'Ho Chi Minh',
+};
+
+// Tra toạ độ theo tên: lấy nhiều kết quả, ƯU TIÊN Việt Nam + nơi đông dân nhất
+// (tránh vớ nhầm sang thành phố trùng tên ở nước khác, vd Tuy Hòa/Trung Quốc).
+async function geocode(name) {
+  const res = await fetch(`${GEO}?name=${encodeURIComponent(name)}&count=5&language=vi&format=json`);
+  if (!res.ok) return null;
+  const data = await res.json();
+  const results = data.results || [];
+  if (!results.length) return null;
+  const vn = results.filter(r => r.country_code === 'VN');
+  const pool = vn.length ? vn : results;
+  pool.sort((a, b) => (b.population || 0) - (a.population || 0));
+  return pool[0];
+}
+
 function fmtDate(iso) {
   const d = new Date(iso + 'T00:00');
   const thu = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'][d.getDay()];
@@ -36,13 +95,17 @@ async function getWeather(place) {
   if (!q) return 'Nhập tên thành phố! VD: /thoitiet Hà Nội';
 
   try {
-    // 1. Geocoding -> toạ độ
-    const geoRes = await fetch(`${GEO}?name=${encodeURIComponent(q)}&count=1&language=vi&format=json`);
-    if (!geoRes.ok) return 'Không tra cứu được vị trí (lỗi mạng). Thử lại sau nhé.';
-    const geo = await geoRes.json();
-    if (!geo.results || !geo.results.length) return `Không tìm thấy địa điểm "${q}". Thử tên khác xem sao.`;
+    // 1. Geocoding -> toạ độ. Thử: bảng ánh xạ tỉnh -> bỏ tiền tố -> nguyên văn.
+    const cleaned = stripPrefix(q);
+    const mapped = VN_ALIAS[normKey(cleaned)];
+    let loc = null;
+    for (const cand of [mapped, cleaned, q]) {
+      if (!cand) continue;
+      loc = await geocode(cand).catch(() => null);
+      if (loc) break;
+    }
+    if (!loc) return `Không tìm thấy địa điểm "${q}". Thử tên khác xem sao.`;
 
-    const loc = geo.results[0];
     const { latitude, longitude } = loc;
     const locName = [loc.name, loc.admin1, loc.country].filter(Boolean).join(', ');
 
